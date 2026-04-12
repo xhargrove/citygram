@@ -2,12 +2,16 @@
 
 City-first social: your **home city** is the default world. Everything else is an intentional trip.
 
+On the web, CITYGRAM leads with a **landing page** presence at `/` (positioning, join, log in). The product app—feed, explore, create, profiles—lives behind auth and onboarding on the routes below.
+
+**Figma (marketing landing):** Full creative brief and section copy for the flagship landing — [`docs/figma-landing-page-prompt.md`](docs/figma-landing-page-prompt.md). Align tokens with `src/app/globals.css`; production page is [`src/app/page.tsx`](src/app/page.tsx).
+
 ## Setup
 
 1. **Create a Supabase project** at [supabase.com](https://supabase.com).
 2. **Run SQL**  
    - Execute `supabase/migrations/001_citygram_schema.sql` in the SQL editor (or Supabase CLI).  
-   - Run `supabase/seed.sql` for three pilot cities (Atlanta, Austin, Portland), neighborhoods, and interests.  
+   - Run `supabase/seed.sql` for reference cities (US metros + neighborhoods), and interests.  
    - Create bucket `post-media` (public read for MVP), then run `supabase/storage.sql` for policies.
 3. **Environment** — copy `.env.local.example` to `.env.local` and set:
    - `NEXT_PUBLIC_SUPABASE_URL`
@@ -30,14 +34,14 @@ Primary routes:
 
 | Path | Purpose |
 |------|---------|
-| `/` | Landing |
+| `/` | Landing / marketing presence (not the signed-in app shell) |
 | `/login`, `/signup`, `/forgot-password` | Auth |
 | `/onboarding` | Home city + interests (required before app) |
 | `/feed` | **Home city feed only** |
 | `/explore` | Browse other cities (Passport entry) |
 | `/passport`, `/passport/[slug]` | Passport Mode — another city’s feed |
 | `/city/[slug]` | City pulse (trending, businesses, events) |
-| `/create` | Create post (storage upload) |
+| `/create` | Create post (client-direct Storage upload + server finalize) |
 | `/post/[id]` | Post + comments |
 | `/u/[username]` | Profile, follow, saved/tagged |
 | `/creator/[username]`, `/business/[username]` | Alias → profile (badges from `account_type`) |
@@ -68,7 +72,7 @@ Primary routes:
 - Onboarding: handle, display name, **home city**, optional neighborhood, interests.
 - Home city feed; Passport city feed; city pulse page; explore hub.
 - Posts with multi-image/video, captions, hashtags, storage upload, likes/saves/shares (share count via RPC), comments, follows.
-- Profiles with grid, saved (self), tagged (data-ready; tagging UI is future).
+- Profiles with grid, saved (self), tagged posts list; **captions support `@username` mentions** (stored in `post_tagged_profiles`, in-app notification).
 - Notifications for follow, like, comment (inserted from server actions).
 - Reports + basic admin remove for moderators/admins.
 - Creator/business **placeholders** (`account_type`, `creator_profiles`, `business_profiles`, sponsored flag on posts, events table).
@@ -77,7 +81,7 @@ Primary routes:
 
 - Rich push notifications, email digests, SMS.
 - Real geo “nearby cities” ranking (currently honest pilot copy).
-- Mention/tag UI for people in posts (`post_tagged_profiles` is ready).
+- Rich @mention autocomplete, comment-level mentions, and mention permissions beyond caption parsing.
 - Full-text search, discovery ranking, reels-length video processing.
 - Payments, branded campaigns, self-serve business tools.
 - Advanced moderation queues, appeals, ML classifiers.
@@ -96,6 +100,29 @@ Primary routes:
 - **Partner with locals** — Small businesses and creators bring the first 50 posts per city.
 - **Highlight rituals** — Weekly themes (#FoodFriday, city-specific tags) to concentrate activity.
 - **Honest UX** — Empty states explain *why* and invite the first post instead of faking engagement.
+
+## Building with a team (and Claude)
+
+Use this doc as the shared context for humans and assistants. Point Claude at **`CITYGRAM.md`** (and specific files) at the start of each task.
+
+### Workflow
+
+- **`main` stays deployable.** Use short-lived branches (`feat/…`, `fix/…`) and small PRs.
+- **PRs** should say what changed, how to test, and call out risk for **auth**, **middleware**, **RLS / Supabase policies**, or **storage**.
+- **Human review** is required for auth, database policies, and anything that changes who can see or write data.
+
+### Shared rules for AI-assisted work
+
+- **Scope** — One feature or bug per session; name files or areas to touch and what *not* to change.
+- **Match the codebase** — Follow existing patterns (App Router, Server Actions, Supabase clients in `src/lib`). Avoid drive-by refactors and new dependencies unless the team agrees.
+- **Product invariants** — Preserve **city-first** behavior: home feed tied to `home_city_id`, onboarding enforced in middleware, no surprise “global For You” feed unless explicitly designed.
+- **Secrets** — Never commit real keys. Use `.env.local` locally; compare names to `.env.local.example`. Do not paste production credentials into chats.
+
+### Before you merge
+
+- Run **`npm run lint`** and **`npm run build`** (and tests if the repo has them).
+- **Smoke-test** the core loop: signup → onboarding → home-city feed → explore/Passport → create post (if your branch touches those paths).
+- If behavior or routes change, **update this file** in the same PR.
 
 ---
 

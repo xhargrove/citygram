@@ -47,7 +47,7 @@ export default async function NotificationsPage() {
       <ul className="space-y-3">
         {notifications.length === 0 && (
           <li className="rounded-2xl border border-border bg-card px-4 py-6 text-sm text-muted">
-            Quiet for now — follows, likes, and comments surface here in real time.
+            Quiet for now — follows, likes, comments, and @mentions surface here.
           </li>
         )}
         {notifications.map((n) => {
@@ -59,7 +59,9 @@ export default async function NotificationsPage() {
                 ? "liked your post"
                 : n.type === "comment"
                   ? "commented on your post"
-                  : "mentioned you";
+                  : n.type === "mention"
+                    ? "tagged you in a post"
+                    : "mentioned you";
 
           return (
             <li

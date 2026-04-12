@@ -1,11 +1,48 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CityRow, PostMediaRow, PostRow, ProfileRow, PostWithAuthor } from "@/types/database";
 
+/** Default page size for city-scoped feeds (home, passport, etc.). */
+export const CITY_FEED_PAGE_SIZE = 20;
+
+type TaggedProfile = Pick<ProfileRow, "id" | "username" | "display_name">;
+
+async function fetchTaggedProfilesByPostIds(
+  supabase: SupabaseClient,
+  postIds: string[]
+): Promise<Map<string, TaggedProfile[]>> {
+  const map = new Map<string, TaggedProfile[]>();
+  if (postIds.length === 0) return map;
+
+  const { data: links } = await supabase
+    .from("post_tagged_profiles")
+    .select("post_id, tagged_profile_id")
+    .in("post_id", postIds);
+
+  if (!links?.length) return map;
+
+  const profileIds = [...new Set(links.map((l) => l.tagged_profile_id))];
+  const { data: profs } = await supabase
+    .from("profiles")
+    .select("id, username, display_name")
+    .in("id", profileIds);
+
+  const pmap = new Map((profs ?? []).map((p) => [p.id, p as TaggedProfile]));
+  for (const l of links) {
+    const p = pmap.get(l.tagged_profile_id);
+    if (!p) continue;
+    const list = map.get(l.post_id) ?? [];
+    list.push(p);
+    map.set(l.post_id, list);
+  }
+  return map;
+}
+
 export async function fetchCityFeed(
   supabase: SupabaseClient,
   cityId: string,
   viewerId: string,
-  limit = 30
+  limit: number = CITY_FEED_PAGE_SIZE,
+  offset = 0
 ): Promise<PostWithAuthor[]> {
   const { data: posts, error } = await supabase
     .from("posts")
@@ -13,7 +50,7 @@ export async function fetchCityFeed(
     .eq("city_id", cityId)
     .eq("is_removed", false)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (error || !posts?.length) {
     return [];
@@ -22,13 +59,14 @@ export async function fetchCityFeed(
   const postIds = posts.map((p) => p.id);
   const authorIds = [...new Set(posts.map((p) => p.author_id))];
 
-  const [{ data: authors }, { data: city }, { data: mediaRows }, { data: likes }, { data: saves }] =
+  const [{ data: authors }, { data: city }, { data: mediaRows }, { data: likes }, { data: saves }, taggedByPost] =
     await Promise.all([
       supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", authorIds),
       supabase.from("cities").select("id, slug, name").eq("id", cityId).single(),
       supabase.from("post_media").select("*").in("post_id", postIds),
       supabase.from("likes").select("post_id").eq("profile_id", viewerId).in("post_id", postIds),
       supabase.from("saved_posts").select("post_id").eq("profile_id", viewerId).in("post_id", postIds),
+      fetchTaggedProfilesByPostIds(supabase, postIds),
     ]);
 
   const authorMap = new Map((authors ?? []).map((a) => [a.id, a as ProfileRow]));
@@ -65,6 +103,7 @@ export async function fetchCityFeed(
       media: mediaByPost.get(row.id) ?? [],
       liked_by_me: liked.has(row.id),
       saved_by_me: saved.has(row.id),
+      tagged_profiles: taggedByPost.get(row.id) ?? [],
     } as PostWithAuthor;
   }).filter(Boolean) as PostWithAuthor[];
 }
@@ -84,7 +123,7 @@ export async function fetchPostById(
         .from("profiles")
         .select("id, username, display_name, avatar_url")
         .eq("id", row.author_id)
-        .single(),
+        .maybeSingle(),
       supabase.from("cities").select("id, slug, name").eq("id", row.city_id).single(),
       supabase.from("post_media").select("*").eq("post_id", postId).order("sort_order"),
       supabase.from("likes").select("post_id").eq("post_id", postId).eq("profile_id", viewerId).maybeSingle(),
@@ -94,6 +133,7 @@ export async function fetchPostById(
   if (!author || !city) return null;
 
   const media = (mediaRows ?? []) as PostMediaRow[];
+  const taggedMap = await fetchTaggedProfilesByPostIds(supabase, [postId]);
 
   return {
     ...(row as PostRow),
@@ -102,5 +142,6 @@ export async function fetchPostById(
     media,
     liked_by_me: Boolean(likeRow),
     saved_by_me: Boolean(saveRow),
+    tagged_profiles: taggedMap.get(postId) ?? [],
   };
 }

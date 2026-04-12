@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { POST_LIMITS, countHashtagTokens } from "@/lib/post-limits";
 import { createClient } from "@/lib/supabase/server";
-import { parseHashtags } from "@/lib/utils";
+import { parseHashtags, parseMentionUsernames } from "@/lib/utils";
 import type { FinalizeCreatePostInput } from "@/types/post-create";
 
 export type CreatePostState = { error?: string; ok?: boolean; postId?: string };
@@ -20,9 +21,17 @@ function isPathUnderDraft(userId: string, draftId: string, storagePath: string):
   return true;
 }
 
+async function rollbackCreatedPost(supabase: SupabaseClient, postId: string, storagePaths: string[]) {
+  if (storagePaths.length > 0) {
+    await supabase.storage.from("post-media").remove(storagePaths);
+  }
+  await supabase.from("posts").delete().eq("id", postId);
+}
+
 /**
  * Creates `posts` + `post_media` after media was uploaded client-direct to Storage.
  * Validates auth, caption/hashtag/media limits, and that paths belong to this user + draft.
+ * Resolves @mentions into `post_tagged_profiles` and sends in-app notifications.
  */
 export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promise<CreatePostState> {
   const supabase = await createClient();
@@ -56,6 +65,11 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
   }
   if (countHashtagTokens(caption) > POST_LIMITS.maxHashtagTokens) {
     return { error: `Use at most ${POST_LIMITS.maxHashtagTokens} hashtags in the caption.` };
+  }
+
+  const mentionUsernames = parseMentionUsernames(caption);
+  if (mentionUsernames.length > POST_LIMITS.maxMentionUsernames) {
+    return { error: `Use at most ${POST_LIMITS.maxMentionUsernames} @mentions per post.` };
   }
 
   const media = [...input.media].sort((a, b) => a.sort_order - b.sort_order);
@@ -94,6 +108,7 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
 
   if (postErr || !post) return { error: postErr?.message ?? "Could not create post" };
 
+  const storagePaths = media.map((m) => m.storage_path);
   const rows = media.map((m) => ({
     post_id: post.id,
     storage_path: m.storage_path,
@@ -103,9 +118,49 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
 
   const { error: mediaErr } = await supabase.from("post_media").insert(rows);
   if (mediaErr) {
-    await supabase.storage.from("post-media").remove(media.map((m) => m.storage_path));
-    await supabase.from("posts").delete().eq("id", post.id);
+    await rollbackCreatedPost(supabase, post.id, storagePaths);
     return { error: mediaErr.message };
+  }
+
+  if (mentionUsernames.length > 0) {
+    const { data: resolved } = await supabase
+      .from("profiles")
+      .select("id, username_lower")
+      .in("username_lower", mentionUsernames);
+
+    const taggedIds = [
+      ...new Set(
+        (resolved ?? [])
+          .map((p) => p.id)
+          .filter((id) => id !== user.id)
+      ),
+    ];
+
+    if (taggedIds.length > 0) {
+      const tagRows = taggedIds.map((tagged_profile_id) => ({
+        post_id: post.id,
+        tagged_profile_id,
+      }));
+
+      const { error: tagErr } = await supabase.from("post_tagged_profiles").insert(tagRows);
+      if (tagErr) {
+        await rollbackCreatedPost(supabase, post.id, storagePaths);
+        return { error: tagErr.message };
+      }
+
+      const notifRows = taggedIds.map((recipient_id) => ({
+        recipient_id,
+        actor_id: user.id,
+        type: "mention" as const,
+        post_id: post.id,
+      }));
+
+      const { error: notifErr } = await supabase.from("notifications").insert(notifRows);
+      if (notifErr) {
+        await rollbackCreatedPost(supabase, post.id, storagePaths);
+        return { error: notifErr.message };
+      }
+    }
   }
 
   revalidatePath("/feed");

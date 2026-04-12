@@ -77,6 +77,8 @@ export type PostWithAuthor = PostRow & {
   media: PostMediaRow[];
   liked_by_me?: boolean;
   saved_by_me?: boolean;
+  /** Profiles @mentioned in caption (V1); omitted when not loaded. */
+  tagged_profiles?: Pick<ProfileRow, "id" | "username" | "display_name">[];
 };
 
 export type CommentRow = {

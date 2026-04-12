@@ -1,16 +1,24 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useOptimistic, useTransition } from "react";
 import { recordShare, toggleLike, toggleSave } from "@/actions/social";
 import { reportPost } from "@/actions/report";
 import { Avatar } from "@/components/media/avatar";
+import { SupabaseFillImage } from "@/components/media/supabase-fill-image";
 import { storagePublicUrl } from "@/lib/media";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import type { PostWithAuthor } from "@/types/database";
+
+/** When set (e.g. home feed), locks the media frame to one aspect for all breakpoints. */
+export type FeedMediaAspect = "square" | "portrait" | "wide";
+
 type Props = {
   post: PostWithAuthor;
+  /** First card in a list: prioritize LCP image fetch. */
+  priorityImage?: boolean;
+  /** Omit to keep the default responsive crop (4:5 mobile, 16:9 on sm+). */
+  mediaAspect?: FeedMediaAspect;
 };
 
 type OptimisticPost = {
@@ -19,7 +27,13 @@ type OptimisticPost = {
   saved: boolean;
 };
 
-export function PostCard({ post }: Props) {
+const FEED_ASPECT_CLASS: Record<FeedMediaAspect, string> = {
+  square: "aspect-square",
+  portrait: "aspect-[4/5]",
+  wide: "aspect-video",
+};
+
+export function PostCard({ post, priorityImage = false, mediaAspect }: Props) {
   const [pending, startTransition] = useTransition();
   const [optimistic, addOptimistic] = useOptimistic<OptimisticPost, Partial<OptimisticPost>>(
     { likes: post.like_count, liked: !!post.liked_by_me, saved: !!post.saved_by_me },
@@ -75,6 +89,7 @@ export function PostCard({ post }: Props) {
             <p className="truncate text-sm font-semibold">{post.author.display_name}</p>
             <p className="truncate text-xs text-muted">
               @{post.author.username} · {post.city.name}
+              <span className="text-muted/80"> · {formatRelativeTime(post.created_at)}</span>
               {post.is_sponsored_placeholder && (
                 <span className="ml-2 rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] uppercase tracking-wide">
                   Local spotlight
@@ -94,16 +109,21 @@ export function PostCard({ post }: Props) {
 
       <Link href={href} className="block bg-black/5 dark:bg-black/40">
         {primary && (
-          <div className="relative aspect-[4/5] w-full overflow-hidden sm:aspect-video">
+          <div
+            className={cn(
+              "relative w-full overflow-hidden",
+              mediaAspect ? FEED_ASPECT_CLASS[mediaAspect] : "aspect-[4/5] sm:aspect-video"
+            )}
+          >
             {primary.media_type === "image" ? (
-              <Image
-                src={storagePublicUrl(primary.storage_path)}
-                alt=""
-                fill
-                className="object-cover"
-                sizes="100vw"
-                priority={false}
-              />
+              <div className="absolute inset-0">
+                <SupabaseFillImage
+                  src={storagePublicUrl(primary.storage_path)}
+                  alt=""
+                  sizes="(max-width: 512px) 100vw, 512px"
+                  priority={priorityImage}
+                />
+              </div>
             ) : (
               <video
                 src={storagePublicUrl(primary.storage_path)}
@@ -123,36 +143,47 @@ export function PostCard({ post }: Props) {
       </Link>
 
       <div className="space-y-2 px-4 py-3">
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-1 text-sm sm:gap-2">
           <button
             type="button"
             className={cn(
-              "min-h-11 min-w-11 rounded-full text-lg transition",
+              "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition",
               optimistic.liked ? "text-accent" : "text-foreground"
             )}
             onClick={onLike}
             disabled={pending}
             aria-pressed={optimistic.liked}
+            aria-label={optimistic.liked ? "Unlike" : "Like"}
           >
-            ♥
+            <HeartIcon filled={optimistic.liked} />
           </button>
-          <Link href={`${href}#comments`} className="min-h-11 min-w-11 rounded-full text-lg">
-            💬
+          <Link
+            href={`${href}#comments`}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-foreground"
+            aria-label="Comments"
+          >
+            <CommentIcon />
           </Link>
-          <button type="button" className="min-h-11 min-w-11 rounded-full text-lg" onClick={onShare}>
-            ↗
+          <button
+            type="button"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-foreground"
+            onClick={onShare}
+            aria-label="Share"
+          >
+            <ShareIcon />
           </button>
           <button
             type="button"
             className={cn(
-              "ml-auto min-h-11 min-w-11 rounded-full text-lg",
+              "ml-auto inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition",
               optimistic.saved ? "text-accent" : "text-foreground"
             )}
             onClick={onSave}
             disabled={pending}
             aria-pressed={optimistic.saved}
+            aria-label={optimistic.saved ? "Remove from saved" : "Save"}
           >
-            ★
+            <BookmarkIcon filled={optimistic.saved} />
           </button>
         </div>
         <p className="text-sm font-semibold">{optimistic.likes} likes</p>
@@ -175,7 +206,73 @@ export function PostCard({ post }: Props) {
             </Link>
           ))}
         </div>
+        {post.tagged_profiles && post.tagged_profiles.length > 0 && (
+          <p className="text-xs text-muted">
+            With{" "}
+            {post.tagged_profiles.map((t, i) => (
+              <span key={t.id}>
+                {i > 0 ? ", " : ""}
+                <Link href={`/u/${t.username}`} className="font-medium text-foreground hover:underline">
+                  @{t.username}
+                </Link>
+              </span>
+            ))}
+          </p>
+        )}
       </div>
     </article>
+  );
+}
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} className="h-6 w-6" aria-hidden>
+      <path
+        d="M12 21s-6.2-4.35-8.4-8.15A5.7 5.7 0 0 1 12 5.25a5.7 5.7 0 0 1 8.4 7.6C18.2 16.65 12 21 12 21Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden>
+      <path
+        d="M21 12a8 8 0 0 1-8 8H8l-5 3v-3a8 8 0 1 1 18-8Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden>
+      <path
+        d="M7 17 17 7M7 7h6v6"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} className="h-6 w-6" aria-hidden>
+      <path
+        d="M6 4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18l-6-4-6 4V4Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

@@ -9,7 +9,7 @@ import type { CityRow, NeighborhoodRow } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { POST_LIMITS, countHashtagTokens } from "@/lib/post-limits";
-import { cn } from "@/lib/utils";
+import { cn, parseMentionUsernames } from "@/lib/utils";
 
 type Props = {
   cities: CityRow[];
@@ -86,15 +86,18 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
 
   const totalSize = totalBytes(files);
   const hashtagCount = countHashtagTokens(caption);
+  const mentionCount = parseMentionUsernames(caption).length;
   const captionOk = caption.length <= POST_LIMITS.captionMaxChars;
   const hashtagsOk = hashtagCount <= POST_LIMITS.maxHashtagTokens;
+  const mentionsOk = mentionCount <= POST_LIMITS.maxMentionUsernames;
   const canSubmit =
     files.length > 0 &&
     files.length <= POST_LIMITS.maxMediaItems &&
     totalSize <= POST_LIMITS.maxMediaBytesTotal &&
     files.every(isAllowedFile) &&
     captionOk &&
-    hashtagsOk;
+    hashtagsOk &&
+    mentionsOk;
 
   const busy = phase !== "idle";
 
@@ -134,6 +137,7 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const formEl = e.currentTarget;
     setClientError(null);
     if (files.length === 0) {
       setClientError("Add at least one photo or video.");
@@ -160,6 +164,16 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       setClientError(`Use at most ${POST_LIMITS.maxHashtagTokens} hashtags in the caption.`);
       return;
     }
+    if (parseMentionUsernames(caption).length > POST_LIMITS.maxMentionUsernames) {
+      setClientError(`Use at most ${POST_LIMITS.maxMentionUsernames} @mentions in the caption.`);
+      return;
+    }
+
+    // Read before any await: once `busy`, selects are disabled and are omitted from FormData.
+    const formDataNow = new FormData(formEl);
+    const publishCityId = String(formDataNow.get("city_id") ?? cityId).trim();
+    const nhNow = formDataNow.get("neighborhood_id");
+    const publishNeighborhoodId = typeof nhNow === "string" && nhNow.length > 0 ? nhNow : null;
 
     const supabase = createClient();
     let uploadedPaths: string[] = [];
@@ -183,16 +197,11 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
 
       step = "finalize";
       setPhase("finalizing");
-      const form = e.currentTarget;
-      const formData = new FormData(form);
-      const city_id = String(formData.get("city_id") ?? "").trim();
-      const nh = formData.get("neighborhood_id");
-      const neighborhood_id = typeof nh === "string" && nh.length > 0 ? nh : null;
 
       const res = await finalizeCreatePost({
         caption,
-        city_id,
-        neighborhood_id,
+        city_id: publishCityId,
+        neighborhood_id: publishNeighborhoodId,
         draft_id: draftId,
         media: items,
       });
@@ -292,12 +301,12 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
           <span
             className={cn(
               "text-[11px] tabular-nums",
-              !captionOk || !hashtagsOk ? "text-red-600 dark:text-red-400" : "text-muted/90"
+              !captionOk || !hashtagsOk || !mentionsOk ? "text-red-600 dark:text-red-400" : "text-muted/90"
             )}
             aria-live="polite"
           >
-            {caption.length}/{POST_LIMITS.captionMaxChars} chars · {hashtagCount}/{POST_LIMITS.maxHashtagTokens}{" "}
-            hashtags
+            {caption.length}/{POST_LIMITS.captionMaxChars} chars · {hashtagCount}/{POST_LIMITS.maxHashtagTokens} hashtags ·{" "}
+            {mentionCount}/{POST_LIMITS.maxMentionUsernames} @mentions
           </span>
         </div>
         <Textarea
@@ -313,8 +322,9 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
         />
         <p id={`${formId}-caption-hint`} className="text-xs leading-relaxed text-muted">
           Same ballpark as Instagram: up to {POST_LIMITS.captionMaxChars} characters and {POST_LIMITS.maxHashtagTokens}{" "}
-          hashtag tokens. Example: <span className="font-medium text-foreground">#Atlanta</span>,{" "}
-          <span className="font-medium text-foreground">#Food</span>, <span className="font-medium text-foreground">#Nightlife</span>.
+          hashtag tokens. Tag people with <span className="font-medium text-foreground">@username</span> (up to{" "}
+          {POST_LIMITS.maxMentionUsernames} per post). Example: <span className="font-medium text-foreground">#Atlanta</span>,{" "}
+          <span className="font-medium text-foreground">@alex</span>.
         </p>
       </div>
 
