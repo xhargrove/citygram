@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPost, type CreatePostState } from "@/actions/post";
 import { createClient } from "@/lib/supabase/client";
 import type { CityRow, NeighborhoodRow } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 type Props = {
   cities: CityRow[];
@@ -14,11 +15,54 @@ type Props = {
   defaultNeighborhoodId: string | null;
 };
 
+const MAX_FILES = 10;
+const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+const ACCEPT = "image/*,video/*";
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isAllowedFile(file: File): boolean {
+  if (file.type.startsWith("image/") || file.type.startsWith("video/")) return true;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (/^(jpe?g|png|gif|webp|heic|heif)$/i.test(ext)) return true;
+  if (/^(mp4|webm|mov|m4v)$/i.test(ext)) return true;
+  return false;
+}
+
+/** Use image thumbnail preview when we can safely show one with an img element. */
+function isImagePreview(file: File): boolean {
+  if (file.type.startsWith("image/")) return true;
+  if (file.type.startsWith("video/")) return false;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return /^(jpe?g|png|gif|webp|heic|heif)$/i.test(ext);
+}
+
+function totalBytes(files: File[]): number {
+  return files.reduce((s, f) => s + f.size, 0);
+}
+
 export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }: Props) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(createPost, {} as CreatePostState);
   const [cityId, setCityId] = useState(defaultCityId);
   const [hoods, setHoods] = useState<NeighborhoodRow[]>([]);
+  const [caption, setCaption] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [clientError, setClientError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const formId = useId();
+  const mediaFieldId = `${formId}-media`;
+
+  const objectUrls = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
+  useEffect(() => {
+    return () => {
+      objectUrls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [objectUrls]);
 
   useEffect(() => {
     if (state?.ok && state.postId) {
@@ -37,8 +81,93 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       .then(({ data }) => setHoods((data as NeighborhoodRow[]) ?? []));
   }, [cityId]);
 
+  const totalSize = totalBytes(files);
+  const canSubmit =
+    files.length > 0 &&
+    files.length <= MAX_FILES &&
+    totalSize <= MAX_TOTAL_BYTES &&
+    files.every(isAllowedFile);
+
+  function tryAddFiles(incoming: File[]) {
+    setClientError(null);
+    if (incoming.length === 0) return;
+    const allowedIncoming = incoming.filter(isAllowedFile);
+    if (allowedIncoming.length < incoming.length) {
+      setClientError("Only image and video files are supported.");
+    }
+    if (allowedIncoming.length === 0) return;
+    const merged = [...files, ...allowedIncoming];
+    if (merged.length > MAX_FILES) {
+      setClientError(`You can add up to ${MAX_FILES} files.`);
+      return;
+    }
+    const t = totalBytes(merged);
+    if (t > MAX_TOTAL_BYTES) {
+      setClientError(
+        `Total size must be ${formatBytes(MAX_TOTAL_BYTES)} or less (this would be ${formatBytes(t)}).`
+      );
+      return;
+    }
+    setFiles(merged);
+  }
+
+  function onFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    tryAddFiles(picked);
+  }
+
+  function removeAt(index: number) {
+    setClientError(null);
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setClientError(null);
+    if (files.length === 0) {
+      setClientError("Add at least one photo or video.");
+      return;
+    }
+    if (files.length > MAX_FILES) {
+      setClientError(`You can add up to ${MAX_FILES} files.`);
+      return;
+    }
+    if (!files.every(isAllowedFile)) {
+      setClientError("Only image and video files are supported.");
+      return;
+    }
+    const t = totalBytes(files);
+    if (t > MAX_TOTAL_BYTES) {
+      setClientError(`Total size must be ${formatBytes(MAX_TOTAL_BYTES)} or less.`);
+      return;
+    }
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    fd.delete("media");
+    for (const f of files) {
+      fd.append("media", f);
+    }
+    formAction(fd);
+  }
+
+  const errorText = clientError ?? state?.error;
+  const disabled = pending;
+
   return (
-    <form action={formAction} className="mx-auto max-w-lg space-y-6 px-4 py-6 safe-pt safe-pb">
+    <form
+      onSubmit={handleSubmit}
+      className="relative mx-auto max-w-lg space-y-6 px-4 py-6 safe-pt safe-pb"
+      aria-busy={pending}
+      noValidate
+    >
+      {pending && (
+        <div
+          className="pointer-events-none absolute inset-0 z-10 rounded-2xl bg-background/55 backdrop-blur-[2px]"
+          aria-hidden
+        />
+      )}
+
       <header className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Create</p>
         <h1 className="font-display text-2xl font-semibold">Share a moment</h1>
@@ -49,13 +178,17 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       </header>
 
       <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted">City</label>
+        <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={`${formId}-city`}>
+          City
+        </label>
         <select
+          id={`${formId}-city`}
           name="city_id"
           value={cityId}
           onChange={(e) => setCityId(e.target.value)}
           className="min-h-12 w-full rounded-xl border border-border bg-card px-4 text-sm"
           required
+          disabled={disabled}
         >
           {cities.map((c) => (
             <option key={c.id} value={c.id}>
@@ -66,13 +199,15 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted">
+        <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={`${formId}-hood`}>
           Neighborhood (optional)
         </label>
         <select
+          id={`${formId}-hood`}
           name="neighborhood_id"
           defaultValue={defaultNeighborhoodId ?? ""}
           className="min-h-12 w-full rounded-xl border border-border bg-card px-4 text-sm"
+          disabled={disabled}
         >
           <option value="">None</option>
           {hoods.map((h) => (
@@ -84,29 +219,140 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted">Caption</label>
-        <Textarea name="caption" placeholder="What’s alive in your city today?" rows={4} />
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted">
-          Photos or video
-        </label>
-        <input
-          name="media"
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          required
-          className="w-full text-sm"
+        <div className="flex items-end justify-between gap-2">
+          <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={`${formId}-caption`}>
+            Caption
+          </label>
+          <span className="text-[11px] tabular-nums text-muted" aria-live="polite">
+            {caption.length} characters
+          </span>
+        </div>
+        <Textarea
+          id={`${formId}-caption`}
+          name="caption"
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          placeholder="What’s alive in your city today? Add hashtags in your caption, like #Atlanta #Foodie"
+          rows={4}
+          disabled={disabled}
+          aria-describedby={`${formId}-caption-hint`}
         />
+        <p id={`${formId}-caption-hint`} className="text-xs text-muted">
+          Hashtags are picked up from your caption — use words like <span className="font-medium text-foreground">#Midtown</span> or{" "}
+          <span className="font-medium text-foreground">#FoodFriday</span>.
+        </p>
       </div>
 
-      {state?.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={mediaFieldId}>
+            Photos or video
+          </label>
+          <span className="text-[11px] text-muted">
+            Up to {MAX_FILES} files · {formatBytes(MAX_TOTAL_BYTES)} total max
+          </span>
+        </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Publishing…" : "Publish"}
-      </Button>
+        <input
+          ref={fileInputRef}
+          id={mediaFieldId}
+          type="file"
+          accept={ACCEPT}
+          multiple
+          className="sr-only"
+          tabIndex={-1}
+          onChange={onFileInputChange}
+          disabled={disabled}
+          aria-describedby={`${formId}-media-help`}
+        />
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || files.length >= MAX_FILES}
+            className={cn(
+              "min-h-12 rounded-xl border border-dashed border-border bg-card px-4 py-3 text-left text-sm font-medium transition-colors",
+              "hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+              "disabled:cursor-not-allowed disabled:opacity-50"
+            )}
+            aria-controls={mediaFieldId}
+          >
+            {files.length === 0 ? "Choose files" : "Add more files"}
+          </button>
+        </div>
+
+        <p id={`${formId}-media-help`} className="text-xs text-muted">
+          {files.length === 0 ? (
+            <span>No files selected yet.</span>
+          ) : (
+            <span>
+              <span className="font-medium text-foreground">{files.length}</span> file{files.length === 1 ? "" : "s"}{" "}
+              selected · <span className="font-medium text-foreground">{formatBytes(totalSize)}</span> total
+            </span>
+          )}
+        </p>
+
+        {files.length > 0 && (
+          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Selected media previews">
+            {files.map((file, index) => {
+              const url = objectUrls[index];
+              const showImageThumb = isImagePreview(file);
+              return (
+                <li
+                  key={`${file.name}-${file.size}-${index}`}
+                  className="relative aspect-square overflow-hidden rounded-xl border border-border bg-muted/20"
+                >
+                  {showImageThumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- local blob previews only
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full flex-col justify-between p-2 text-left">
+                      <div className="rounded-md bg-foreground/10 px-2 py-1 text-[10px] font-semibold uppercase text-muted">
+                        Video
+                      </div>
+                      <p className="line-clamp-2 break-all text-[10px] font-medium leading-tight text-foreground">
+                        {file.name}
+                      </p>
+                      <p className="text-[10px] text-muted">{formatBytes(file.size)}</p>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeAt(index)}
+                    disabled={disabled}
+                    className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-sm font-bold text-foreground shadow-sm backdrop-blur-sm transition hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    ×
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {errorText && (
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          {errorText}
+        </p>
+      )}
+
+      <div className="space-y-3">
+        {pending && (
+          <div className="flex items-center justify-center gap-2 text-sm text-muted" role="status">
+            <span
+              className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent"
+              aria-hidden
+            />
+            <span>Publishing your post…</span>
+          </div>
+        )}
+        <Button type="submit" className="w-full" disabled={disabled || !canSubmit}>
+          {pending ? "Publishing…" : "Publish"}
+        </Button>
+      </div>
     </form>
   );
 }
