@@ -15,7 +15,8 @@ const nav = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const hideNav = pathname.startsWith("/create");
+  const hideNav =
+    pathname.startsWith("/create") || pathname.startsWith("/onboarding");
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
