@@ -41,6 +41,14 @@ function isImagePreview(file: File): boolean {
   return /^(jpe?g|png|gif|webp|heic|heif)$/i.test(ext);
 }
 
+function videoTypeLabel(file: File): string {
+  if (file.type && file.type.startsWith("video/")) {
+    return file.type.replace("video/", "").toUpperCase() || "Video";
+  }
+  const ext = file.name.split(".").pop()?.toUpperCase() ?? "VIDEO";
+  return ext;
+}
+
 function totalBytes(files: File[]): number {
   return files.reduce((s, f) => s + f.size, 0);
 }
@@ -159,15 +167,9 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       onSubmit={handleSubmit}
       className="relative mx-auto max-w-lg space-y-6 px-4 py-6 safe-pt safe-pb"
       aria-busy={pending}
+      aria-describedby={pending ? `${formId}-publishing-status` : undefined}
       noValidate
     >
-      {pending && (
-        <div
-          className="pointer-events-none absolute inset-0 z-10 rounded-2xl bg-background/55 backdrop-blur-[2px]"
-          aria-hidden
-        />
-      )}
-
       <header className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Create</p>
         <h1 className="font-display text-2xl font-semibold">Share a moment</h1>
@@ -223,8 +225,9 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
           <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={`${formId}-caption`}>
             Caption
           </label>
-          <span className="text-[11px] tabular-nums text-muted" aria-live="polite">
-            {caption.length} characters
+          <span className="text-[11px] tabular-nums text-muted/90" aria-live="polite">
+            {caption.length}
+            <span className="text-muted/70"> chars</span>
           </span>
         </div>
         <Textarea
@@ -232,14 +235,14 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
           name="caption"
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="What’s alive in your city today? Add hashtags in your caption, like #Atlanta #Foodie"
+          placeholder="What’s happening in your city? Add hashtags in your caption, like #Atlanta #Food #Nightlife"
           rows={4}
           disabled={disabled}
           aria-describedby={`${formId}-caption-hint`}
         />
-        <p id={`${formId}-caption-hint`} className="text-xs text-muted">
-          Hashtags are picked up from your caption — use words like <span className="font-medium text-foreground">#Midtown</span> or{" "}
-          <span className="font-medium text-foreground">#FoodFriday</span>.
+        <p id={`${formId}-caption-hint`} className="text-xs leading-relaxed text-muted">
+          Hashtags are detected from your caption — for example <span className="font-medium text-foreground">#Atlanta</span>,{" "}
+          <span className="font-medium text-foreground">#Food</span>, <span className="font-medium text-foreground">#Nightlife</span>.
         </p>
       </div>
 
@@ -266,70 +269,108 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
           aria-describedby={`${formId}-media-help`}
         />
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || files.length >= MAX_FILES}
+        {files.length === 0 ? (
+          <div
             className={cn(
-              "min-h-12 rounded-xl border border-dashed border-border bg-card px-4 py-3 text-left text-sm font-medium transition-colors",
-              "hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-              "disabled:cursor-not-allowed disabled:opacity-50"
+              "flex min-h-[148px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/80 bg-card/40 px-4 py-6 text-center",
+              "transition-colors",
+              !disabled && "hover:border-border hover:bg-card/60"
             )}
-            aria-controls={mediaFieldId}
           >
-            {files.length === 0 ? "Choose files" : "Add more files"}
-          </button>
-        </div>
+            <div className="rounded-full bg-foreground/5 p-3 text-muted" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8" stroke="currentColor" strokeWidth="1.5">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 16v2a1 1 0 001 1h14a1 1 0 001-1v-2M4 16V8a1 1 0 011-1h3m0 0 1-1V5a1 1 0 00-1-1H8a1 1 0 00-1 1v2m0 0h8"
+                />
+              </svg>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Add photos or a video</p>
+              <p id={`${formId}-media-help`} className="text-xs text-muted">
+                JPG, PNG, GIF, WebP, HEIC, MP4, MOV, and similar formats. Max {MAX_FILES} files,{" "}
+                {formatBytes(MAX_TOTAL_BYTES)} total.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled}
+              className={cn(
+                "min-h-12 w-full max-w-xs rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold shadow-sm transition-colors",
+                "hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                "disabled:cursor-not-allowed disabled:opacity-50"
+              )}
+              aria-controls={mediaFieldId}
+            >
+              Choose from library
+            </button>
+          </div>
+        ) : (
+          <>
+            <p id={`${formId}-media-help`} className="text-xs text-muted">
+              <span className="font-medium text-foreground">{files.length}</span> file{files.length === 1 ? "" : "s"} selected
+              {" · "}
+              <span className="font-medium text-foreground">{formatBytes(totalSize)}</span> total
+            </p>
 
-        <p id={`${formId}-media-help`} className="text-xs text-muted">
-          {files.length === 0 ? (
-            <span>No files selected yet.</span>
-          ) : (
-            <span>
-              <span className="font-medium text-foreground">{files.length}</span> file{files.length === 1 ? "" : "s"}{" "}
-              selected · <span className="font-medium text-foreground">{formatBytes(totalSize)}</span> total
-            </span>
-          )}
-        </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled || files.length >= MAX_FILES}
+                className={cn(
+                  "min-h-12 rounded-xl border border-dashed border-border bg-card px-4 py-3 text-left text-sm font-medium transition-colors",
+                  "hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
+                aria-controls={mediaFieldId}
+              >
+                Add more files
+              </button>
+            </div>
 
-        {files.length > 0 && (
-          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Selected media previews">
-            {files.map((file, index) => {
-              const url = objectUrls[index];
-              const showImageThumb = isImagePreview(file);
-              return (
-                <li
-                  key={`${file.name}-${file.size}-${index}`}
-                  className="relative aspect-square overflow-hidden rounded-xl border border-border bg-muted/20"
-                >
-                  {showImageThumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- local blob previews only
-                    <img src={url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full flex-col justify-between p-2 text-left">
-                      <div className="rounded-md bg-foreground/10 px-2 py-1 text-[10px] font-semibold uppercase text-muted">
-                        Video
-                      </div>
-                      <p className="line-clamp-2 break-all text-[10px] font-medium leading-tight text-foreground">
-                        {file.name}
-                      </p>
-                      <p className="text-[10px] text-muted">{formatBytes(file.size)}</p>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeAt(index)}
-                    disabled={disabled}
-                    className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-sm font-bold text-foreground shadow-sm backdrop-blur-sm transition hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
-                    aria-label={`Remove ${file.name}`}
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Selected media previews">
+              {files.map((file, index) => {
+                const url = objectUrls[index];
+                const showImageThumb = isImagePreview(file);
+                return (
+                  <li
+                    key={`${index}-${file.lastModified}-${file.name}-${file.size}`}
+                    className="relative aspect-square overflow-hidden rounded-xl border border-border bg-muted/20"
                   >
-                    ×
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                    {showImageThumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- local blob previews only
+                      <img src={url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full flex-col justify-between gap-1 p-2 text-left">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="rounded-md bg-foreground/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted">
+                            Video
+                          </span>
+                          <span className="truncate text-[9px] font-medium uppercase text-accent">{videoTypeLabel(file)}</span>
+                        </div>
+                        <p className="line-clamp-2 min-h-0 break-all text-[10px] font-medium leading-tight text-foreground">
+                          {file.name}
+                        </p>
+                        <p className="text-[10px] text-muted">{formatBytes(file.size)}</p>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeAt(index)}
+                      disabled={disabled}
+                      className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-sm font-bold text-foreground shadow-sm backdrop-blur-sm transition hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                      aria-label={`Remove ${file.name}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
 
@@ -340,19 +381,28 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       )}
 
       <div className="space-y-3">
-        {pending && (
-          <div className="flex items-center justify-center gap-2 text-sm text-muted" role="status">
-            <span
-              className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent"
-              aria-hidden
-            />
-            <span>Publishing your post…</span>
-          </div>
-        )}
-        <Button type="submit" className="w-full" disabled={disabled || !canSubmit}>
-          {pending ? "Publishing…" : "Publish"}
+        <Button type="submit" className="w-full min-h-12" disabled={disabled || !canSubmit}>
+          {pending ? "Working…" : "Publish post"}
         </Button>
       </div>
+
+      {pending && (
+        <div
+          id={`${formId}-publishing-status`}
+          className="absolute inset-0 z-50 flex cursor-wait flex-col items-center justify-center gap-3 rounded-2xl bg-background/80 px-6 text-center backdrop-blur-sm"
+          role="status"
+          aria-live="assertive"
+        >
+          <span
+            className="inline-block h-9 w-9 animate-spin rounded-full border-2 border-accent border-t-transparent"
+            aria-hidden
+          />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">Uploading media & publishing…</p>
+            <p className="text-xs text-muted">Keep this screen open — this won&apos;t take long.</p>
+          </div>
+        </div>
+      )}
     </form>
   );
 }
