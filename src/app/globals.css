@@ -3,19 +3,48 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f5;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --card: #ffffff;
+  --border: rgba(15, 23, 42, 0.08);
+  --accent: #0d9488;
+  --accent-foreground: #f0fdfa;
+  --city-glow: rgba(13, 148, 136, 0.15);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #070b12;
+  --foreground: #f1f5f9;
+  --muted: #94a3b8;
+  --card: #0f1419;
+  --border: rgba(241, 245, 249, 0.08);
+  --accent: #2dd4bf;
+  --accent-foreground: #042f2e;
+  --city-glow: rgba(45, 212, 191, 0.12);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe areas for notched phones — consumed by layout padding */
+.safe-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.feed-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
