@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: supabaseImagePattern(),
   },
+  // Headroom for non-create server actions; create-post media no longer goes through Server Actions.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "55mb",
+    },
+  },
 };
 
 export default nextConfig;

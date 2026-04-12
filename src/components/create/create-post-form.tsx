@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPost, type CreatePostState } from "@/actions/post";
+import { finalizeCreatePost } from "@/actions/post";
+import { uploadDraftMediaToStorage } from "@/lib/post-media-upload";
 import { createClient } from "@/lib/supabase/client";
 import type { CityRow, NeighborhoodRow } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { POST_LIMITS, countHashtagTokens } from "@/lib/post-limits";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -15,8 +17,8 @@ type Props = {
   defaultNeighborhoodId: string | null;
 };
 
-const MAX_FILES = 10;
-const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
+type Phase = "idle" | "uploading" | "finalizing";
+
 const ACCEPT = "image/*,video/*";
 
 function formatBytes(n: number): string {
@@ -55,12 +57,12 @@ function totalBytes(files: File[]): number {
 
 export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }: Props) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(createPost, {} as CreatePostState);
   const [cityId, setCityId] = useState(defaultCityId);
   const [hoods, setHoods] = useState<NeighborhoodRow[]>([]);
   const [caption, setCaption] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [clientError, setClientError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>("idle");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formId = useId();
   const mediaFieldId = `${formId}-media`;
@@ -73,13 +75,6 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
   }, [objectUrls]);
 
   useEffect(() => {
-    if (state?.ok && state.postId) {
-      router.replace(`/post/${state.postId}`);
-      router.refresh();
-    }
-  }, [state, router]);
-
-  useEffect(() => {
     const supabase = createClient();
     void supabase
       .from("neighborhoods")
@@ -90,11 +85,18 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
   }, [cityId]);
 
   const totalSize = totalBytes(files);
+  const hashtagCount = countHashtagTokens(caption);
+  const captionOk = caption.length <= POST_LIMITS.captionMaxChars;
+  const hashtagsOk = hashtagCount <= POST_LIMITS.maxHashtagTokens;
   const canSubmit =
     files.length > 0 &&
-    files.length <= MAX_FILES &&
-    totalSize <= MAX_TOTAL_BYTES &&
-    files.every(isAllowedFile);
+    files.length <= POST_LIMITS.maxMediaItems &&
+    totalSize <= POST_LIMITS.maxMediaBytesTotal &&
+    files.every(isAllowedFile) &&
+    captionOk &&
+    hashtagsOk;
+
+  const busy = phase !== "idle";
 
   function tryAddFiles(incoming: File[]) {
     setClientError(null);
@@ -105,14 +107,14 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
     }
     if (allowedIncoming.length === 0) return;
     const merged = [...files, ...allowedIncoming];
-    if (merged.length > MAX_FILES) {
-      setClientError(`You can add up to ${MAX_FILES} files.`);
+    if (merged.length > POST_LIMITS.maxMediaItems) {
+      setClientError(`You can add up to ${POST_LIMITS.maxMediaItems} files.`);
       return;
     }
     const t = totalBytes(merged);
-    if (t > MAX_TOTAL_BYTES) {
+    if (t > POST_LIMITS.maxMediaBytesTotal) {
       setClientError(
-        `Total size must be ${formatBytes(MAX_TOTAL_BYTES)} or less (this would be ${formatBytes(t)}).`
+        `Total size must be ${formatBytes(POST_LIMITS.maxMediaBytesTotal)} or less (this would be ${formatBytes(t)}).`
       );
       return;
     }
@@ -130,15 +132,15 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setClientError(null);
     if (files.length === 0) {
       setClientError("Add at least one photo or video.");
       return;
     }
-    if (files.length > MAX_FILES) {
-      setClientError(`You can add up to ${MAX_FILES} files.`);
+    if (files.length > POST_LIMITS.maxMediaItems) {
+      setClientError(`You can add up to ${POST_LIMITS.maxMediaItems} files.`);
       return;
     }
     if (!files.every(isAllowedFile)) {
@@ -146,36 +148,98 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       return;
     }
     const t = totalBytes(files);
-    if (t > MAX_TOTAL_BYTES) {
-      setClientError(`Total size must be ${formatBytes(MAX_TOTAL_BYTES)} or less.`);
+    if (t > POST_LIMITS.maxMediaBytesTotal) {
+      setClientError(`Total size must be ${formatBytes(POST_LIMITS.maxMediaBytesTotal)} or less.`);
       return;
     }
-    const form = e.currentTarget;
-    const fd = new FormData(form);
-    fd.delete("media");
-    for (const f of files) {
-      fd.append("media", f);
+    if (caption.length > POST_LIMITS.captionMaxChars) {
+      setClientError(`Caption is limited to ${POST_LIMITS.captionMaxChars} characters.`);
+      return;
     }
-    formAction(fd);
+    if (countHashtagTokens(caption) > POST_LIMITS.maxHashtagTokens) {
+      setClientError(`Use at most ${POST_LIMITS.maxHashtagTokens} hashtags in the caption.`);
+      return;
+    }
+
+    const supabase = createClient();
+    let uploadedPaths: string[] = [];
+    let step: "upload" | "finalize" = "upload";
+
+    try {
+      setPhase("uploading");
+      const {
+        data: { user },
+        error: authErr,
+      } = await supabase.auth.getUser();
+      if (authErr || !user) {
+        setClientError("Sign in required.");
+        setPhase("idle");
+        return;
+      }
+
+      const draftId = crypto.randomUUID();
+      const { items, paths } = await uploadDraftMediaToStorage(supabase, user.id, draftId, files);
+      uploadedPaths = paths;
+
+      step = "finalize";
+      setPhase("finalizing");
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      const city_id = String(formData.get("city_id") ?? "").trim();
+      const nh = formData.get("neighborhood_id");
+      const neighborhood_id = typeof nh === "string" && nh.length > 0 ? nh : null;
+
+      const res = await finalizeCreatePost({
+        caption,
+        city_id,
+        neighborhood_id,
+        draft_id: draftId,
+        media: items,
+      });
+
+      if (res.error) {
+        await supabase.storage.from("post-media").remove(uploadedPaths);
+        setClientError(`Could not publish: ${res.error}`);
+        setPhase("idle");
+        return;
+      }
+      if (res.ok && res.postId) {
+        router.replace(`/post/${res.postId}`);
+        router.refresh();
+        return;
+      }
+
+      await supabase.storage.from("post-media").remove(uploadedPaths);
+      setClientError("Could not publish: unknown error.");
+      setPhase("idle");
+    } catch (err) {
+      if (uploadedPaths.length > 0) {
+        await supabase.storage.from("post-media").remove(uploadedPaths);
+      }
+      const raw = err instanceof Error ? err.message : "Something went wrong.";
+      setClientError(step === "upload" ? `Upload failed: ${raw}` : `Could not publish: ${raw}`);
+      setPhase("idle");
+    }
   }
 
-  const errorText = clientError ?? state?.error;
-  const disabled = pending;
+  const errorText = clientError;
+  const disabled = busy;
 
   return (
     <form
       onSubmit={handleSubmit}
       className="relative mx-auto max-w-lg space-y-6 px-4 py-6 safe-pt safe-pb"
-      aria-busy={pending}
-      aria-describedby={pending ? `${formId}-publishing-status` : undefined}
+      aria-busy={busy}
+      aria-describedby={busy ? `${formId}-publishing-status` : undefined}
       noValidate
     >
       <header className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Create</p>
         <h1 className="font-display text-2xl font-semibold">Share a moment</h1>
         <p className="text-sm text-muted">
-          Media uploads to Supabase Storage. City defaults to your home city — change it if you&apos;re
-          posting while traveling.
+          Media uploads from your device directly to Supabase Storage, then the post is saved. City defaults to your
+          home city — change it if you&apos;re posting while traveling. Caption and hashtag caps follow common
+          Instagram-style norms; total upload size is lower here (web-friendly).
         </p>
       </header>
 
@@ -221,13 +285,19 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-end justify-between gap-2">
+        <div className="flex flex-wrap items-end justify-between gap-2">
           <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={`${formId}-caption`}>
             Caption
           </label>
-          <span className="text-[11px] tabular-nums text-muted/90" aria-live="polite">
-            {caption.length}
-            <span className="text-muted/70"> chars</span>
+          <span
+            className={cn(
+              "text-[11px] tabular-nums",
+              !captionOk || !hashtagsOk ? "text-red-600 dark:text-red-400" : "text-muted/90"
+            )}
+            aria-live="polite"
+          >
+            {caption.length}/{POST_LIMITS.captionMaxChars} chars · {hashtagCount}/{POST_LIMITS.maxHashtagTokens}{" "}
+            hashtags
           </span>
         </div>
         <Textarea
@@ -238,10 +308,12 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
           placeholder="What’s happening in your city? Add hashtags in your caption, like #Atlanta #Food #Nightlife"
           rows={4}
           disabled={disabled}
+          maxLength={POST_LIMITS.captionMaxChars}
           aria-describedby={`${formId}-caption-hint`}
         />
         <p id={`${formId}-caption-hint`} className="text-xs leading-relaxed text-muted">
-          Hashtags are detected from your caption — for example <span className="font-medium text-foreground">#Atlanta</span>,{" "}
+          Same ballpark as Instagram: up to {POST_LIMITS.captionMaxChars} characters and {POST_LIMITS.maxHashtagTokens}{" "}
+          hashtag tokens. Example: <span className="font-medium text-foreground">#Atlanta</span>,{" "}
           <span className="font-medium text-foreground">#Food</span>, <span className="font-medium text-foreground">#Nightlife</span>.
         </p>
       </div>
@@ -252,7 +324,7 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
             Photos or video
           </label>
           <span className="text-[11px] text-muted">
-            Up to {MAX_FILES} files · {formatBytes(MAX_TOTAL_BYTES)} total max
+            Up to {POST_LIMITS.maxMediaItems} files · {formatBytes(POST_LIMITS.maxMediaBytesTotal)} total max
           </span>
         </div>
 
@@ -289,8 +361,8 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">Add photos or a video</p>
               <p id={`${formId}-media-help`} className="text-xs text-muted">
-                JPG, PNG, GIF, WebP, HEIC, MP4, MOV, and similar formats. Max {MAX_FILES} files,{" "}
-                {formatBytes(MAX_TOTAL_BYTES)} total.
+                JPG, PNG, GIF, WebP, HEIC, MP4, MOV, and similar formats. Max {POST_LIMITS.maxMediaItems} files,{" "}
+                {formatBytes(POST_LIMITS.maxMediaBytesTotal)} total.
               </p>
             </div>
             <button
@@ -319,7 +391,7 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={disabled || files.length >= MAX_FILES}
+                disabled={disabled || files.length >= POST_LIMITS.maxMediaItems}
                 className={cn(
                   "min-h-12 rounded-xl border border-dashed border-border bg-card px-4 py-3 text-left text-sm font-medium transition-colors",
                   "hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -382,11 +454,11 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
 
       <div className="space-y-3">
         <Button type="submit" className="w-full min-h-12" disabled={disabled || !canSubmit}>
-          {pending ? "Working…" : "Publish post"}
+          {phase === "uploading" ? "Uploading…" : phase === "finalizing" ? "Publishing…" : "Publish post"}
         </Button>
       </div>
 
-      {pending && (
+      {busy && (
         <div
           id={`${formId}-publishing-status`}
           className="absolute inset-0 z-50 flex cursor-wait flex-col items-center justify-center gap-3 rounded-2xl bg-background/80 px-6 text-center backdrop-blur-sm"
@@ -398,8 +470,14 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
             aria-hidden
           />
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">Uploading media & publishing…</p>
-            <p className="text-xs text-muted">Keep this screen open — this won&apos;t take long.</p>
+            <p className="text-sm font-semibold text-foreground">
+              {phase === "uploading" ? "Uploading media…" : "Saving your post…"}
+            </p>
+            <p className="text-xs text-muted">
+              {phase === "uploading"
+                ? "Sending files directly to storage."
+                : "Creating your post — almost done."}
+            </p>
           </div>
         </div>
       )}
