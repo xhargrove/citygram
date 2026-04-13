@@ -21,6 +21,14 @@ On the web, CITYGRAM leads with a **landing page** presence at `/` (positioning,
    `{NEXT_PUBLIC_APP_URL}/auth/callback`
 5. **Install & dev** — `npm install` then `npm run dev` (mobile: use your LAN IP or tunnel; app is responsive).
 
+### Production hosting (first deploy)
+
+- **Build:** `npm run build` then `npm run start` (or the host’s default for Next.js). No custom output directory.
+- **Environment:** Use the **production** Supabase project values for `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Set `NEXT_PUBLIC_APP_URL` to the **canonical HTTPS origin** users see (password reset, resend confirmation, and other `getPublicEnv()` flows); it must not point at localhost in production.
+- **Auth:** In Supabase → Authentication → URL configuration, add redirect URLs `{NEXT_PUBLIC_APP_URL}/auth/callback` for production; add preview/staging origins separately if you use them. The [`src/app/auth/callback/route.ts`](src/app/auth/callback/route.ts) handler exchanges the OAuth `code` and redirects using the **request** `origin`, but email-based flows still depend on `NEXT_PUBLIC_APP_URL`.
+- **Database & storage:** Run `supabase/migrations/001_citygram_schema.sql`, optionally `supabase/seed.sql`, create Storage bucket **`post-media`** (public read per MVP notes in `supabase/storage.sql`), then run `supabase/storage.sql`.
+- **Images:** `next.config.ts` allows `next/image` for your Supabase Storage host derived from `NEXT_PUBLIC_SUPABASE_URL` at build time—set env before build on the host.
+
 ## Folder & route map
 
 - `src/app` — App Router pages (landing, auth, onboarding, `(shell)` app with bottom nav).
