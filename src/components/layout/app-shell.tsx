@@ -193,13 +193,16 @@ function isActive(item: NavItem, pathname: string) {
 
 function Wordmark() {
   return (
-    <Link href="/feed" className="group flex items-center gap-2" aria-label="CITYGRAM home">
+    <Link
+      href="/feed"
+      className="group flex items-center rounded-xl p-1 outline-none transition-transform focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      aria-label="CITYGRAM home"
+    >
       <CitygramLogo
-        size={32}
-        className="transition-transform group-hover:scale-105"
+        size={36}
+        className="rounded-lg shadow-sm ring-1 ring-border/40 transition-[transform,box-shadow] group-hover:scale-[1.03] group-hover:shadow-md group-hover:shadow-accent/15"
         priority
       />
-      <span className="hidden text-base font-semibold tracking-tight xl:block">CITYGRAM</span>
     </Link>
   );
 }
@@ -213,8 +216,10 @@ function SidebarItem({ item, pathname }: { item: NavItem; pathname: string }) {
         href={item.href}
         aria-label={item.label}
         className={cn(
-          "flex items-center gap-3 rounded-xl px-3 py-2.5 font-semibold text-sm transition-all",
-          "bg-foreground text-background hover:opacity-90 active:scale-95"
+          "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none transition-all",
+          "bg-gradient-to-br from-accent via-accent to-teal-700 text-accent-foreground shadow-lg shadow-accent/25",
+          "hover:brightness-105 active:scale-[0.98] dark:to-teal-600",
+          "focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
       >
         <span className="flex h-6 w-6 shrink-0 items-center justify-center">{item.icon(true)}</span>
@@ -229,9 +234,9 @@ function SidebarItem({ item, pathname }: { item: NavItem; pathname: string }) {
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+        "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-accent/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active
-          ? "bg-foreground/10 font-semibold text-foreground"
+          ? "bg-gradient-to-r from-accent/12 to-transparent font-semibold text-foreground shadow-sm ring-1 ring-accent/15 before:absolute before:left-1.5 before:top-1/2 before:h-[58%] before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-accent before:content-['']"
           : "text-muted hover:bg-foreground/5 hover:text-foreground"
       )}
     >
@@ -246,8 +251,12 @@ function BottomNavItem({ item, pathname }: { item: NavItem; pathname: string }) 
 
   if (item.isCreate) {
     return (
-      <Link href={item.href} aria-label={item.label} className="flex flex-1 flex-col items-center justify-center gap-0.5">
-        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95">
+      <Link
+        href={item.href}
+        aria-label={item.label}
+        className="flex flex-1 flex-col items-center justify-center gap-0.5"
+      >
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-accent via-accent to-teal-700 text-accent-foreground shadow-lg shadow-accent/35 ring-2 ring-background ring-offset-2 ring-offset-background transition-transform active:scale-95 dark:to-teal-600">
           {item.icon(true)}
         </span>
       </Link>
@@ -260,11 +269,19 @@ function BottomNavItem({ item, pathname }: { item: NavItem; pathname: string }) 
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors",
-        active ? "text-foreground" : "text-muted"
+        "relative flex flex-1 flex-col items-center justify-center gap-0.5 pb-1 transition-colors",
+        active ? "text-accent" : "text-muted"
       )}
     >
-      {item.icon(active)}
+      <span className="relative flex flex-col items-center">
+        {item.icon(active)}
+        {active && (
+          <span
+            className="absolute -bottom-1.5 h-0.5 w-5 rounded-full bg-accent shadow-[0_0_10px_var(--city-glow)]"
+            aria-hidden
+          />
+        )}
+      </span>
       <span className="sr-only text-[10px] font-medium leading-none sm:not-sr-only">{item.label}</span>
     </Link>
   );
@@ -277,14 +294,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navItems = buildNavItems(profileHref);
 
   return (
-    <div className="flex min-h-dvh bg-background text-foreground">
+    <div className="flex min-h-dvh bg-transparent text-foreground">
       {!hideChrome && (
         <aside
           className={cn(
             "sticky top-0 hidden h-dvh shrink-0 flex-col",
             "w-[72px] xl:w-64",
-            "border-r border-border/50",
-            "bg-background/95 backdrop-blur-md",
+            "border-r border-border/40",
+            "bg-card/45 shadow-[inset_-1px_0_0_rgba(15,23,42,0.04)] backdrop-blur-xl backdrop-saturate-150 dark:bg-card/30 dark:shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)]",
             "gap-1 px-3 py-5",
             "transition-all duration-200 lg:flex"
           )}
@@ -303,9 +320,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             href="/settings"
             aria-label="Settings"
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-accent/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               "text-muted hover:bg-foreground/5 hover:text-foreground",
-              pathname === "/settings" && "bg-foreground/10 font-semibold text-foreground"
+              pathname === "/settings" &&
+                "bg-foreground/10 font-semibold text-foreground ring-1 ring-border/50"
             )}
           >
             <span className="flex h-6 w-6 shrink-0 items-center justify-center">
@@ -343,12 +361,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             "lg:hidden",
             "fixed bottom-0 left-0 right-0 z-40",
             "flex h-[4.25rem] items-center",
-            "border-t border-border/50",
-            "bg-card/95 backdrop-blur-md",
+            "rounded-t-3xl border border-b-0 border-border/45",
+            "bg-card/90 shadow-[0_-16px_48px_-16px_rgba(15,23,42,0.12)] backdrop-blur-xl backdrop-saturate-150 dark:shadow-[0_-16px_56px_-12px_rgba(0,0,0,0.55)]",
             "safe-pb"
           )}
         >
-          <div className="mx-auto flex w-full max-w-lg items-center px-2">
+          <div className="mx-auto flex w-full max-w-lg items-center px-2 pt-1">
             {navItems.map((item) => (
               <BottomNavItem key={item.label} item={item} pathname={pathname} />
             ))}

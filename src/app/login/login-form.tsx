@@ -84,9 +84,8 @@ export function LoginForm() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="flex h-14 items-center justify-between border-b border-border/50 px-5 safe-pt">
-        <Link href="/" className="flex items-center gap-2" aria-label="CITYGRAM home">
-          <CitygramLogo size={28} priority />
-          <span className="text-sm font-semibold tracking-tight">CITYGRAM</span>
+        <Link href="/" className="flex items-center" aria-label="CITYGRAM home">
+          <CitygramLogo size={36} priority />
         </Link>
         <Link
           href={signupHref}
