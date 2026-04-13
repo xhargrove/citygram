@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useOptimistic, useTransition } from "react";
+import type { MutableRefObject, PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { recordShare, toggleLike, toggleSave } from "@/actions/social";
 import { reportPost } from "@/actions/report";
 import { Avatar } from "@/components/media/avatar";
 import { SupabaseFillImage } from "@/components/media/supabase-fill-image";
 import { storagePublicUrl } from "@/lib/media";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import type { PostWithAuthor } from "@/types/database";
+import type { PostMediaRow, PostWithAuthor } from "@/types/database";
 
 /** When set (e.g. home feed), locks the media frame to one aspect for all breakpoints. */
 export type FeedMediaAspect = "square" | "portrait" | "wide";
@@ -33,14 +34,173 @@ const FEED_ASPECT_CLASS: Record<FeedMediaAspect, string> = {
   wide: "aspect-video",
 };
 
+const SWIPE_PX = 48;
+
+function PostMediaCarousel({
+  media,
+  aspectClassName,
+  priorityImage,
+  blockLinkRef,
+}: {
+  media: PostMediaRow[];
+  aspectClassName: string;
+  priorityImage: boolean;
+  blockLinkRef: MutableRefObject<boolean>;
+}) {
+  const count = media.length;
+  const [index, setIndex] = useState(0);
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+
+  useEffect(() => {
+    videoRefs.current.forEach((v, i) => {
+      if (v && i !== index) v.pause();
+    });
+  }, [index]);
+
+  function go(delta: number) {
+    if (count < 2) return;
+    blockLinkRef.current = true;
+    setIndex((i) => (i + delta + count) % count);
+    window.setTimeout(() => {
+      blockLinkRef.current = false;
+    }, 150);
+  }
+
+  function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    pointerStart.current = { x: e.clientX, y: e.clientY };
+  }
+
+  function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    if (count < 2 || !pointerStart.current) {
+      pointerStart.current = null;
+      return;
+    }
+    const dx = e.clientX - pointerStart.current.x;
+    const dy = e.clientY - pointerStart.current.y;
+    pointerStart.current = null;
+    if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy)) return;
+    go(dx < 0 ? 1 : -1);
+  }
+
+  return (
+    <div
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Post media"
+      className={cn("relative w-full overflow-hidden", aspectClassName)}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={() => {
+        pointerStart.current = null;
+      }}
+    >
+      <div
+        className="flex h-full transition-transform duration-300 ease-out motion-reduce:transition-none"
+        style={{
+          width: `${count * 100}%`,
+          transform: `translateX(-${(index * 100) / count}%)`,
+        }}
+      >
+        {media.map((item, i) => (
+          <div
+            key={item.id}
+            className="relative h-full shrink-0 overflow-hidden"
+            style={{ width: `${100 / count}%` }}
+          >
+            {item.media_type === "image" ? (
+              <div className="absolute inset-0">
+                <SupabaseFillImage
+                  src={storagePublicUrl(item.storage_path)}
+                  alt=""
+                  sizes="(max-width: 512px) 100vw, 512px"
+                  priority={priorityImage && i === 0}
+                />
+              </div>
+            ) : (
+              <video
+                ref={(el) => {
+                  videoRefs.current[i] = el;
+                }}
+                src={storagePublicUrl(item.storage_path)}
+                className="h-full w-full object-cover"
+                controls={i === index}
+                playsInline
+                preload="metadata"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {count > 1 && (
+        <>
+          <div
+            className="absolute bottom-3 left-0 right-0 z-10 flex justify-center gap-1.5 px-8"
+            role="tablist"
+            aria-label="Slides"
+          >
+            {media.map((item, i) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={i === index}
+                aria-label={`Slide ${i + 1} of ${count}`}
+                className={cn(
+                  "h-1.5 min-h-[6px] rounded-full transition-[width,background-color] duration-200",
+                  i === index ? "w-5 bg-white" : "w-1.5 bg-white/50"
+                )}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  blockLinkRef.current = true;
+                  setIndex(i);
+                  window.setTimeout(() => {
+                    blockLinkRef.current = false;
+                  }, 150);
+                }}
+              />
+            ))}
+          </div>
+          <button
+            type="button"
+            className="absolute left-1 top-1/2 z-10 hidden min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-2xl text-white hover:bg-black/55 sm:flex"
+            aria-label="Previous slide"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              go(-1);
+            }}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="absolute right-1 top-1/2 z-10 hidden min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-2xl text-white hover:bg-black/55 sm:flex"
+            aria-label="Next slide"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              go(1);
+            }}
+          >
+            ›
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function PostCard({ post, priorityImage = false, mediaAspect }: Props) {
+  const carouselBlockLinkRef = useRef(false);
   const [pending, startTransition] = useTransition();
   const [optimistic, addOptimistic] = useOptimistic<OptimisticPost, Partial<OptimisticPost>>(
     { likes: post.like_count, liked: !!post.liked_by_me, saved: !!post.saved_by_me },
     (state, next) => ({ ...state, ...next })
   );
 
-  const primary = post.media[0];
   const href = `/post/${post.id}`;
 
   async function onLike() {
@@ -107,38 +267,24 @@ export function PostCard({ post, priorityImage = false, mediaAspect }: Props) {
         </button>
       </header>
 
-      <Link href={href} className="block bg-black/5 dark:bg-black/40">
-        {primary && (
-          <div
-            className={cn(
-              "relative w-full overflow-hidden",
+      <Link
+        href={href}
+        className="block bg-black/5 dark:bg-black/40"
+        onClick={(e) => {
+          if (carouselBlockLinkRef.current) {
+            e.preventDefault();
+          }
+        }}
+      >
+        {post.media.length > 0 && (
+          <PostMediaCarousel
+            media={post.media}
+            aspectClassName={
               mediaAspect ? FEED_ASPECT_CLASS[mediaAspect] : "aspect-[4/5] sm:aspect-video"
-            )}
-          >
-            {primary.media_type === "image" ? (
-              <div className="absolute inset-0">
-                <SupabaseFillImage
-                  src={storagePublicUrl(primary.storage_path)}
-                  alt=""
-                  sizes="(max-width: 512px) 100vw, 512px"
-                  priority={priorityImage}
-                />
-              </div>
-            ) : (
-              <video
-                src={storagePublicUrl(primary.storage_path)}
-                className="h-full w-full object-cover"
-                controls
-                playsInline
-                preload="metadata"
-              />
-            )}
-            {post.media.length > 1 && (
-              <span className="absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
-                {post.media.length} slides
-              </span>
-            )}
-          </div>
+            }
+            priorityImage={priorityImage}
+            blockLinkRef={carouselBlockLinkRef}
+          />
         )}
       </Link>
 
