@@ -15,7 +15,7 @@ export default async function AdminPage() {
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!profile || !["moderator", "admin"].includes(profile.role)) {
     notFound();

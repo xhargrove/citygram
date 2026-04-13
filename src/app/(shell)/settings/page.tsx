@@ -16,7 +16,7 @@ export default async function SettingsPage() {
     .from("profiles")
     .select("username, role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg px-4 pb-24 pt-6 safe-pt">
