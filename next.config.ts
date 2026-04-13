@@ -27,6 +27,14 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "55mb",
     },
   },
+  // Dev-only: avoid webpack persistent-cache pack renames under `.next/cache/webpack/*` (ENOENT on
+  // rename is common on macOS when the cache is busy). Memory cache is slightly less incremental I/O.
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = { type: "memory" };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
