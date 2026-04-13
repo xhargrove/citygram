@@ -32,7 +32,7 @@ export default async function PostPage({ params }: Props) {
           <p className="font-display text-lg font-semibold">Thread</p>
         </div>
       </header>
-      <PostCard post={post} />
+      <PostCard post={post} priorityImage />
       <CommentThread postId={post.id} initial={comments} />
     </div>
   );

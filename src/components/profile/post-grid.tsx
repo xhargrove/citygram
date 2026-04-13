@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { SupabaseFillImage } from "@/components/media/supabase-fill-image";
 import { storagePublicUrl } from "@/lib/media";
 import type { PostThumb } from "@/lib/data/profile";
 
@@ -25,17 +25,18 @@ export function PostGrid({ items }: Props) {
           className="relative aspect-square overflow-hidden bg-card"
         >
           {item.storage_path && item.media_type === "image" ? (
-            <Image
-              src={storagePublicUrl(item.storage_path)}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="33vw"
-            />
+            <div className="absolute inset-0">
+              <SupabaseFillImage
+                src={storagePublicUrl(item.storage_path)}
+                alt=""
+                sizes="(max-width: 512px) 34vw, 180px"
+                priority={false}
+              />
+            </div>
           ) : item.storage_path && item.media_type === "video" ? (
             <video
               src={storagePublicUrl(item.storage_path)}
-              className="h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover"
               muted
               playsInline
             />

@@ -1,19 +1,31 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
+// /me is a convenience alias — always resolves to the signed-in user's
+// real profile at /u/[username]. This keeps any hardcoded /me links working.
+
 export default async function MePage() {
   const supabase = await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+
+  if (!user) {
+    redirect("/login");
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("username")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (!profile?.username) redirect("/onboarding");
+  if (!profile?.username) {
+    // Profile incomplete — middleware should have caught this,
+    // but guard here as a safety net.
+    redirect("/onboarding");
+  }
+
   redirect(`/u/${profile.username}`);
 }
