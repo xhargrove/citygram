@@ -61,18 +61,38 @@ export async function completeOnboarding(
     .maybeSingle();
   if (taken) return { error: "That handle is already taken" };
 
-  const { error: profileErr } = await supabase
+  const row = {
+    username,
+    display_name,
+    home_city_id,
+    neighborhood_id,
+    onboarding_completed: true as const,
+  };
+
+  const { data: updatedProfile, error: profileErr } = await supabase
     .from("profiles")
-    .update({
-      username,
-      display_name,
-      home_city_id,
-      neighborhood_id,
-      onboarding_completed: true,
-    })
-    .eq("id", user.id);
+    .update(row)
+    .eq("id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (profileErr) return { error: profileErr.message };
+
+  if (!updatedProfile) {
+    const { data: inserted, error: insertErr } = await supabase
+      .from("profiles")
+      .insert({ id: user.id, ...row })
+      .select("id")
+      .maybeSingle();
+
+    if (insertErr) return { error: insertErr.message };
+    if (!inserted) {
+      return {
+        error:
+          "Could not create your profile. Confirm supabase/migrations/001_citygram_schema.sql is applied and profiles RLS allows insert for your account.",
+      };
+    }
+  }
 
   await supabase.from("profile_interests").delete().eq("profile_id", user.id);
   const rows = parsed.data.interest_ids.map((interest_id) => ({

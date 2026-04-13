@@ -14,7 +14,7 @@ export default async function OnboardingPage() {
     .from("profiles")
     .select("onboarding_completed")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
   if (profile?.onboarding_completed) redirect("/feed");
 
   const [{ data: cities }, { data: interests }] = await Promise.all([
