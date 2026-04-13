@@ -49,8 +49,10 @@ export default function RootLayout({
         <ThemeProvider>
           {!env.supabaseConfigured && (
             <div className="border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-900 dark:text-amber-100">
-              Configure <code className="font-mono">NEXT_PUBLIC_SUPABASE_*</code> in{" "}
-              <code className="font-mono">.env.local</code> to enable auth and data.
+              Set <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
+              <code className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in{" "}
+              <code className="font-mono">.env.local</code> (local) or your host&apos;s env (e.g. Vercel),
+              then restart / redeploy.
             </div>
           )}
           {children}
