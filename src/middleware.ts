@@ -15,6 +15,21 @@ function isPublic(pathname: string): boolean {
 const AUTH_MARKETING = new Set(["/login", "/signup", "/forgot-password"]);
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Never run auth / Supabase on Next.js internals or dev assets (HMR, webpack runtime, etc.).
+  // The matcher only skips _next/static and _next/image; other /_next/* paths must bypass here
+  // or chunk requests can 500 when middleware redirects or throws.
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/__nextjs") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/icon.png" ||
+    pathname === "/apple-icon.png"
+  ) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
@@ -44,8 +59,6 @@ export async function middleware(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   // 1. Signed-out user hitting a protected route → login
   if (!user && !isPublic(pathname)) {
@@ -89,11 +102,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - public files with extensions (images, fonts, etc.)
+     * Prefer a broad match; paths under /_next (except static/image in regex) still hit middleware
+     * unless we no-op early — see top of middleware().
+     * Also skip common static assets by extension.
      */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|otf|eot)).*)",
   ],

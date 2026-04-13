@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { CitygramLogo } from "@/components/brand/citygram-logo";
 import { cn } from "@/lib/utils";
 
 // ─── Route helpers ────────────────────────────────────────────────────────────
@@ -192,10 +193,12 @@ function isActive(item: NavItem, pathname: string) {
 
 function Wordmark() {
   return (
-    <Link href="/feed" className="group flex items-center gap-2">
-      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-foreground text-sm font-bold tracking-tight text-background transition-transform group-hover:scale-105">
-        CG
-      </span>
+    <Link href="/feed" className="group flex items-center gap-2" aria-label="CITYGRAM home">
+      <CitygramLogo
+        size={32}
+        className="transition-transform group-hover:scale-105"
+        priority
+      />
       <span className="hidden text-base font-semibold tracking-tight xl:block">CITYGRAM</span>
     </Link>
   );

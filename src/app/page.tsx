@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CitygramLogo } from "@/components/brand/citygram-logo";
 import { getPublicEnv } from "@/lib/env";
 
 // ─── Static city preview data ─────────────────────────────────────────────────
@@ -57,12 +58,10 @@ export default function LandingPage() {
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-border/50 bg-background/95 backdrop-blur-md safe-pt">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5">
-          <span className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground text-xs font-bold tracking-tight text-background">
-              CG
-            </span>
+          <Link href="/" className="flex items-center gap-2" aria-label="CITYGRAM home">
+            <CitygramLogo size={28} priority />
             <span className="text-sm font-semibold tracking-tight">CITYGRAM</span>
-          </span>
+          </Link>
           <nav className="flex items-center gap-2" aria-label="Marketing">
             <Link
               href="/login"
@@ -216,9 +215,7 @@ export default function LandingPage() {
       <footer className="border-t border-border/50 safe-pb">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-8 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-[10px] font-bold text-background">
-              CG
-            </span>
+            <CitygramLogo size={24} />
             <span className="text-xs font-semibold tracking-tight text-muted">CITYGRAM</span>
           </div>
           <p className="text-xs text-muted">

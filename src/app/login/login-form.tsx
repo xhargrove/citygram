@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatSignInError, isEmailNotConfirmedError } from "@/lib/supabase/auth-errors";
+import { CitygramLogo } from "@/components/brand/citygram-logo";
 import { getPublicEnv } from "@/lib/env";
 
 export function LoginForm() {
@@ -83,10 +84,8 @@ export function LoginForm() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <header className="flex h-14 items-center justify-between border-b border-border/50 px-5 safe-pt">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground text-xs font-bold text-background">
-            CG
-          </span>
+        <Link href="/" className="flex items-center gap-2" aria-label="CITYGRAM home">
+          <CitygramLogo size={28} priority />
           <span className="text-sm font-semibold tracking-tight">CITYGRAM</span>
         </Link>
         <Link
