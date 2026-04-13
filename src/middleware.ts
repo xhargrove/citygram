@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getNormalizedSupabasePublicEnv } from "@/lib/supabase/public-env";
 
 // ─── Public routes — no auth required ────────────────────────────────────────
 // Exact matches and prefix matches for routes that are always accessible.
@@ -34,12 +35,11 @@ export async function middleware(request: NextRequest) {
     request: { headers: request.headers },
   });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
+  const env = getNormalizedSupabasePublicEnv();
+  if (!env) {
     return response;
   }
+  const { url, key } = env;
 
   try {
     const supabase = createServerClient(url, key, {

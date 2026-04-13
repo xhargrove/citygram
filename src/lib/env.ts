@@ -1,10 +1,14 @@
+import { getNormalizedSupabasePublicEnv } from "@/lib/supabase/public-env";
+
 export function getPublicEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = getNormalizedSupabasePublicEnv();
   return {
-    supabaseConfigured: Boolean(url && anon),
-    supabaseUrl: url ?? "",
-    supabaseAnonKey: anon ?? "",
-    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+    supabaseConfigured: supabase !== null,
+    supabaseUrl: supabase?.url ?? "",
+    supabaseAnonKey: supabase?.key ?? "",
+    appUrl: (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").trim().replace(
+      /^["']+|["']+$/g,
+      ""
+    ),
   };
 }

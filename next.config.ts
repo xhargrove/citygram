@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 function supabaseImagePattern() {
-  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/^["']+|["']+$/g, "") ?? "";
   if (!raw) return [];
   try {
     const host = new URL(raw).hostname;

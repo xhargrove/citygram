@@ -2,6 +2,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getNormalizedSupabasePublicEnv } from "@/lib/supabase/public-env";
 
 let browserClient: SupabaseClient | null = null;
 let warnedAboutAnonKeyShape = false;
@@ -12,11 +13,14 @@ function looksLikePublicSupabaseKey(k: string): boolean {
 }
 
 export function createClient(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const env = getNormalizedSupabasePublicEnv();
+  if (!env) {
+    throw new Error(
+      "Missing or invalid NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY " +
+        "(URL must be a full https address, e.g. https://xxxx.supabase.co)"
+    );
   }
+  const { url, key } = env;
 
   if (
     process.env.NODE_ENV === "development" &&
