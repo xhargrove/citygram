@@ -29,6 +29,31 @@ On the web, CITYGRAM leads with a **landing page** presence at `/` (positioning,
 - **Database & storage:** Run `supabase/migrations/001_citygram_schema.sql`, optionally `supabase/seed.sql`, create Storage bucket **`post-media`** (public read per MVP notes in `supabase/storage.sql`), then run `supabase/storage.sql`.
 - **Images:** `next.config.ts` allows `next/image` for your Supabase Storage host derived from `NEXT_PUBLIC_SUPABASE_URL` at build time—set env before build on the host.
 
+### Deployment reality (summary)
+
+- **Build-ready:** the app is intended to pass `npm run lint` and `npm run build` on `main` before release.
+- **No in-repo CI or `vercel.json` is required** to ship a first version—configure the host and Supabase in their UIs.
+- **Launch is not “automatic”:** production still needs env vars, a Supabase project with schema + Storage + Auth URLs, as in the bullets above.
+
+## Launch gate (manual smoke test)
+
+Run locally (and repeat on **production** after deploy) before calling the release ready:
+
+1. **`npm run lint`** — no errors.
+2. **`npm run build`** — succeeds.
+3. **Signup** (or sign in with a test account).
+4. **Onboarding** — complete home city + interests; you land in the app with `onboarding_completed` true.
+5. **`/feed`** — feed matches **your home city** only (not a global “all cities” stream).
+6. **`/explore`** — browse cities; **browse-first** (no posting into another city from here).
+7. **`/passport/[slug]`** — view another city’s feed as Passport; **not** a posting target for that city.
+8. **`/city/[slug]`** — city pulse / discovery; **browse-first**.
+9. **`/create`** — publish **one post with at least one image or video**; confirm it appears on **`/feed`** (home city), not as if you posted “into” Passport.
+10. **`/notifications`** — open the page; trigger a notification if you test follow/like/mention paths.
+11. **Sign out** → **sign in** again; session works.
+12. **Re-confirm invariants:** home-city-only posting, **no global startup feed**, onboarding still enforced for new accounts.
+
+Secondary handoff summary: [`docs/context/handoff-overview.md`](docs/context/handoff-overview.md).
+
 ## Folder & route map
 
 - `src/app` — App Router pages (landing, auth, onboarding, `(shell)` app with bottom nav).
@@ -111,7 +136,7 @@ Primary routes:
 
 ## Building with a team (and Claude)
 
-Use this doc as the shared context for humans and assistants. Point Claude at **`CITYGRAM.md`** (and specific files) at the start of each task.
+Use this doc as the shared context for humans and assistants. Point Claude at **`CITYGRAM.md`** (and specific files) at the start of each task. For a shorter engineer onboarding page, see [`docs/context/handoff-overview.md`](docs/context/handoff-overview.md)—**keep it in sync** when product truth changes.
 
 ### Workflow
 
@@ -129,8 +154,8 @@ Use this doc as the shared context for humans and assistants. Point Claude at **
 ### Before you merge
 
 - Run **`npm run lint`** and **`npm run build`** (and tests if the repo has them).
-- **Smoke-test** the core loop: signup → onboarding → home-city feed → explore/Passport → create post (if your branch touches those paths).
-- If behavior or routes change, **update this file** in the same PR.
+- Run the **[Launch gate](#launch-gate-manual-smoke-test)** checklist when your change touches auth, feed, create, middleware, or Supabase-facing code.
+- If behavior or routes change, **update `CITYGRAM.md` and `docs/context/handoff-overview.md`** in the same PR.
 
 ---
 
