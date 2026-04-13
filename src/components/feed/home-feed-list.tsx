@@ -34,6 +34,7 @@ export function HomeFeedList({ initialPosts }: Props) {
   const [posts, setPosts] = useState(initialPosts);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(initialPosts.length < CITY_FEED_PAGE_SIZE);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [mediaAspect, setMediaAspect] = useState<FeedMediaAspect>("square");
 
   useEffect(() => {
@@ -51,11 +52,14 @@ export function HomeFeedList({ initialPosts }: Props) {
   }
 
   const loadMore = useCallback(async () => {
+    setLoadMoreError(null);
     setLoading(true);
     try {
       const { posts: next, done: noMore } = await loadMoreHomeFeedPosts(posts.length);
       setPosts((prev) => [...prev, ...next]);
       setDone(noMore);
+    } catch {
+      setLoadMoreError("Couldn’t load more posts. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -63,10 +67,16 @@ export function HomeFeedList({ initialPosts }: Props) {
 
   return (
     <>
-      <div className="border-b border-border/70 bg-background/95 px-4 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Media crop</span>
-          <div className="flex gap-1" role="group" aria-label="Feed photo shape">
+      <div className="border-b border-border/50 bg-gradient-to-r from-accent/8 via-background/95 to-accent/5 px-4 py-3 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+            <span
+              className="inline-block h-1 w-1 rounded-full bg-accent shadow-[0_0_8px_var(--city-glow)]"
+              aria-hidden
+            />
+            Media crop
+          </span>
+          <div className="flex gap-1 rounded-full border border-border/50 bg-card/60 p-0.5 shadow-sm" role="group" aria-label="Feed photo shape">
             {ASPECT_OPTIONS.map(({ value, label, hint }) => (
               <button
                 key={value}
@@ -76,10 +86,10 @@ export function HomeFeedList({ initialPosts }: Props) {
                 aria-pressed={mediaAspect === value}
                 aria-label={`${hint} (${label})`}
                 className={cn(
-                  "min-h-9 rounded-full border px-3 text-xs font-semibold transition-colors",
+                  "min-h-9 rounded-full px-3.5 text-xs font-semibold transition-all",
                   mediaAspect === value
-                    ? "border-accent bg-accent/15 text-foreground"
-                    : "border-border bg-card text-muted hover:border-border hover:text-foreground"
+                    ? "bg-accent text-accent-foreground shadow-md shadow-accent/20"
+                    : "text-muted hover:bg-foreground/5 hover:text-foreground"
                 )}
               >
                 {label}
@@ -96,14 +106,22 @@ export function HomeFeedList({ initialPosts }: Props) {
       </div>
 
       {!done && (
-        <div className="flex justify-center px-4 py-8">
+        <div className="flex flex-col items-center gap-3 px-4 py-8">
+          {loadMoreError && (
+            <p
+              className="max-w-md rounded-xl border border-red-500/35 bg-red-500/[0.07] px-4 py-3 text-center text-sm text-red-700 dark:text-red-300"
+              role="alert"
+            >
+              {loadMoreError}
+            </p>
+          )}
           <button
             type="button"
             onClick={loadMore}
             disabled={loading}
-            className="rounded-full border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="relative overflow-hidden rounded-full border border-border/60 bg-card/80 px-8 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:border-accent/30 hover:shadow-city disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Loading…" : "Load more"}
+            {loading ? <span className="animate-pulse">Loading…</span> : loadMoreError ? "Try again" : "Load more"}
           </button>
         </div>
       )}
