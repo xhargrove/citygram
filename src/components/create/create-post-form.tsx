@@ -143,6 +143,17 @@ export function CreatePostForm({ homeCityId, homeCityName, defaultNeighborhoodId
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function moveMedia(index: number, delta: -1 | 1) {
+    setClientError(null);
+    setFiles((prev) => {
+      const next = [...prev];
+      const j = index + delta;
+      if (j < 0 || j >= next.length) return prev;
+      [next[index], next[j]] = [next[j], next[index]];
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setClientError(null);
@@ -236,13 +247,25 @@ export function CreatePostForm({ homeCityId, homeCityName, defaultNeighborhoodId
 
   const errorText = clientError;
   const disabled = busy;
+  const captionRemaining = Math.max(0, POST_LIMITS.captionMaxChars - caption.length);
+  const captionFillRatio = Math.min(1, caption.length / POST_LIMITS.captionMaxChars);
+  const captionBarTone =
+    caption.length >= POST_LIMITS.captionMaxChars
+      ? "bg-red-500/90"
+      : caption.length >= POST_LIMITS.captionMaxChars * 0.9
+        ? "bg-amber-500/85"
+        : "bg-accent";
 
   return (
     <form
       onSubmit={handleSubmit}
       className="relative mx-auto max-w-lg space-y-6 px-4 py-6 safe-pt safe-pb"
       aria-busy={busy}
-      aria-describedby={busy ? `${formId}-publishing-status` : undefined}
+      aria-describedby={
+        [busy ? `${formId}-publishing-status` : null, errorText ? `${formId}-error` : null]
+          .filter(Boolean)
+          .join(" ") || undefined
+      }
       noValidate
     >
       <header className="space-y-1">
@@ -286,48 +309,13 @@ export function CreatePostForm({ homeCityId, homeCityName, defaultNeighborhoodId
         </select>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={`${formId}-caption`}>
-            Caption
-          </label>
-          <span
-            className={cn(
-              "text-[11px] tabular-nums",
-              !captionOk || !hashtagsOk || !mentionsOk ? "text-red-600 dark:text-red-400" : "text-muted/90"
-            )}
-            aria-live="polite"
-          >
-            {caption.length}/{POST_LIMITS.captionMaxChars} chars · {hashtagCount}/{POST_LIMITS.maxHashtagTokens} hashtags ·{" "}
-            {mentionCount}/{POST_LIMITS.maxMentionUsernames} @mentions
-          </span>
-        </div>
-        <Textarea
-          id={`${formId}-caption`}
-          name="caption"
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="What’s happening in your city? Add hashtags in your caption, like #Atlanta #Food #Nightlife"
-          rows={4}
-          disabled={disabled}
-          maxLength={POST_LIMITS.captionMaxChars}
-          aria-describedby={`${formId}-caption-hint`}
-        />
-        <p id={`${formId}-caption-hint`} className="text-xs leading-relaxed text-muted">
-          Same ballpark as Instagram: up to {POST_LIMITS.captionMaxChars} characters and {POST_LIMITS.maxHashtagTokens}{" "}
-          hashtag tokens. Tag people with <span className="font-medium text-foreground">@username</span> (up to{" "}
-          {POST_LIMITS.maxMentionUsernames} per post). Example: <span className="font-medium text-foreground">#Atlanta</span>,{" "}
-          <span className="font-medium text-foreground">@alex</span>.
-        </p>
-      </div>
-
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={mediaFieldId}>
-            Photos or video
+            Photos & video
           </label>
           <span className="text-[11px] text-muted">
-            Up to {POST_LIMITS.maxMediaItems} files · {formatBytes(POST_LIMITS.maxMediaBytesTotal)} total max
+            Up to {POST_LIMITS.maxMediaItems} · {formatBytes(POST_LIMITS.maxMediaBytesTotal)} max total
           </span>
         </div>
 
@@ -347,25 +335,28 @@ export function CreatePostForm({ homeCityId, homeCityName, defaultNeighborhoodId
         {files.length === 0 ? (
           <div
             className={cn(
-              "flex min-h-[148px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/80 bg-card/40 px-4 py-6 text-center",
+              "flex min-h-[168px] flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border/90 bg-gradient-to-b from-card/80 to-accent/5 px-4 py-7 text-center shadow-sm",
               "transition-colors",
-              !disabled && "hover:border-border hover:bg-card/60"
+              !disabled && "hover:border-accent/35 hover:from-card hover:to-accent/10"
             )}
           >
-            <div className="rounded-full bg-foreground/5 p-3 text-muted" aria-hidden>
-              <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8" stroke="currentColor" strokeWidth="1.5">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 16v2a1 1 0 001 1h14a1 1 0 001-1v-2M4 16V8a1 1 0 011-1h3m0 0 1-1V5a1 1 0 00-1-1H8a1 1 0 00-1 1v2m0 0h8"
-                />
-              </svg>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">Step 1</span>
+              <div className="rounded-2xl bg-accent/10 p-3 text-accent shadow-inner ring-1 ring-accent/15" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="none" className="h-9 w-9" stroke="currentColor" strokeWidth="1.5">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 16v2a1 1 0 001 1h14a1 1 0 001-1v-2M4 16V8a1 1 0 011-1h3m0 0 1-1V5a1 1 0 00-1-1H8a1 1 0 00-1 1v2m0 0h8"
+                  />
+                </svg>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Add photos or a video</p>
-              <p id={`${formId}-media-help`} className="text-xs text-muted">
-                JPG, PNG, GIF, WebP, HEIC, MP4, MOV, and similar formats. Max {POST_LIMITS.maxMediaItems} files,{" "}
-                {formatBytes(POST_LIMITS.maxMediaBytesTotal)} total.
+            <div className="max-w-xs space-y-2">
+              <p className="text-base font-semibold text-foreground">Add photos or a video</p>
+              <p id={`${formId}-media-help`} className="text-sm leading-snug text-muted">
+                Pick from your camera roll or files. Order here is the order in your post — you can reorder after
+                selecting.
               </p>
             </div>
             <button
@@ -373,70 +364,112 @@ export function CreatePostForm({ homeCityId, homeCityName, defaultNeighborhoodId
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled}
               className={cn(
-                "min-h-12 w-full max-w-xs rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold shadow-sm transition-colors",
-                "hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                "disabled:cursor-not-allowed disabled:opacity-50"
+                "min-h-12 w-full max-w-sm rounded-xl bg-gradient-to-br from-accent via-accent to-teal-700 px-5 py-3.5 text-sm font-semibold text-accent-foreground shadow-md shadow-accent/25 transition",
+                "hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                "active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 dark:to-teal-600"
               )}
               aria-controls={mediaFieldId}
             >
-              Choose from library
+              Choose media
             </button>
+            <p className="text-[11px] leading-relaxed text-muted">
+              JPG, PNG, GIF, WebP, HEIC · MP4, MOV, WebM · max {POST_LIMITS.maxMediaItems} files
+            </p>
           </div>
         ) : (
           <>
             <p id={`${formId}-media-help`} className="text-xs text-muted">
-              <span className="font-medium text-foreground">{files.length}</span> file{files.length === 1 ? "" : "s"} selected
-              {" · "}
+              <span className="font-medium text-foreground">{files.length}</span> in this post
+              <span className="text-muted"> · </span>
               <span className="font-medium text-foreground">{formatBytes(totalSize)}</span> total
+              <span className="text-muted"> · order = feed order</span>
             </p>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={disabled || files.length >= POST_LIMITS.maxMediaItems}
-                className={cn(
-                  "min-h-12 rounded-xl border border-dashed border-border bg-card px-4 py-3 text-left text-sm font-medium transition-colors",
-                  "hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                  "disabled:cursor-not-allowed disabled:opacity-50"
-                )}
-                aria-controls={mediaFieldId}
-              >
-                Add more files
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || files.length >= POST_LIMITS.maxMediaItems}
+              className={cn(
+                "flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-accent/30 bg-accent/5 px-4 py-3 text-sm font-semibold text-foreground transition-colors",
+                "hover:border-accent/45 hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                "disabled:cursor-not-allowed disabled:opacity-50"
+              )}
+              aria-controls={mediaFieldId}
+            >
+              <span className="text-lg leading-none text-accent" aria-hidden>
+                +
+              </span>
+              Add more ({files.length}/{POST_LIMITS.maxMediaItems})
+            </button>
 
-            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Selected media previews">
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label="Selected media, in post order">
               {files.map((file, index) => {
                 const url = objectUrls[index];
                 const showImageThumb = isImagePreview(file);
+                const itemKey = `${file.name}-${file.size}-${file.lastModified}-${index}`;
                 return (
-                  <li
-                    key={`${index}-${file.lastModified}-${file.name}-${file.size}`}
-                    className="relative aspect-square overflow-hidden rounded-xl border border-border bg-muted/20"
-                  >
+                  <li key={itemKey} className="relative aspect-square overflow-hidden rounded-xl border border-border bg-muted/20 shadow-sm ring-1 ring-border/40">
+                    <span
+                      className="absolute left-1.5 top-1.5 z-20 flex h-6 min-w-6 items-center justify-center rounded-full bg-background/90 px-1.5 text-[11px] font-bold tabular-nums text-foreground shadow-sm backdrop-blur-sm"
+                      aria-label={`Position ${index + 1} in post`}
+                    >
+                      {index + 1}
+                    </span>
                     {showImageThumb ? (
                       // eslint-disable-next-line @next/next/no-img-element -- local blob previews only
                       <img src={url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full flex-col justify-between gap-1 p-2 text-left">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="rounded-md bg-foreground/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted">
-                            Video
-                          </span>
-                          <span className="truncate text-[9px] font-medium uppercase text-accent">{videoTypeLabel(file)}</span>
-                        </div>
-                        <p className="line-clamp-2 min-h-0 break-all text-[10px] font-medium leading-tight text-foreground">
-                          {file.name}
-                        </p>
-                        <p className="text-[10px] text-muted">{formatBytes(file.size)}</p>
-                      </div>
+                      <video
+                        src={url}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                        preload="metadata"
+                        aria-hidden
+                      />
                     )}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/75 via-black/25 to-transparent pt-9" />
+                    <div className="absolute bottom-0 left-0 right-0 z-20 flex items-end justify-between gap-0.5 px-1 pb-1 pt-6">
+                      {files.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => moveMedia(index, -1)}
+                          disabled={disabled || index === 0}
+                          className="pointer-events-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/95 text-sm font-bold text-foreground shadow-md transition hover:bg-white disabled:opacity-35 dark:bg-zinc-900/95 dark:text-white dark:hover:bg-zinc-800"
+                          aria-label={`Move earlier in post`}
+                        >
+                          ‹
+                        </button>
+                      ) : (
+                        <span className="w-8 shrink-0" aria-hidden />
+                      )}
+                      <div className="min-w-0 flex-1 px-0.5 text-center">
+                        {!showImageThumb && (
+                          <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-white drop-shadow">
+                            Video · {videoTypeLabel(file)}
+                          </p>
+                        )}
+                        <p className="text-[9px] font-medium tabular-nums text-white drop-shadow">{formatBytes(file.size)}</p>
+                      </div>
+                      {files.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => moveMedia(index, 1)}
+                          disabled={disabled || index === files.length - 1}
+                          className="pointer-events-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/95 text-sm font-bold text-foreground shadow-md transition hover:bg-white disabled:opacity-35 dark:bg-zinc-900/95 dark:text-white dark:hover:bg-zinc-800"
+                          aria-label={`Move later in post`}
+                        >
+                          ›
+                        </button>
+                      ) : (
+                        <span className="w-8 shrink-0" aria-hidden />
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeAt(index)}
                       disabled={disabled}
-                      className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-sm font-bold text-foreground shadow-sm backdrop-blur-sm transition hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                      className="absolute right-1 top-1 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-background/95 text-base font-bold leading-none text-foreground shadow backdrop-blur-sm transition hover:bg-red-500/20 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent dark:hover:text-red-300 disabled:opacity-50"
                       aria-label={`Remove ${file.name}`}
                     >
                       ×
@@ -449,37 +482,101 @@ export function CreatePostForm({ homeCityId, homeCityName, defaultNeighborhoodId
         )}
       </div>
 
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={`${formId}-caption`}>
+            Caption
+          </label>
+          <span
+            className={cn(
+              "text-[11px] tabular-nums text-muted/90",
+              !captionOk && "font-medium text-red-600 dark:text-red-400"
+            )}
+            aria-live="polite"
+          >
+            {caption.length.toLocaleString()} / {POST_LIMITS.captionMaxChars.toLocaleString()}
+            <span className="text-muted"> · {captionRemaining} left</span>
+          </span>
+        </div>
+        <div className="space-y-2">
+          <Textarea
+            id={`${formId}-caption`}
+            name="caption"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Describe the moment — #YourCity @someone"
+            rows={5}
+            disabled={disabled}
+            maxLength={POST_LIMITS.captionMaxChars}
+            aria-describedby={`${formId}-caption-hint ${formId}-caption-meter`}
+            className="min-h-[140px] resize-y"
+          />
+          <div
+            id={`${formId}-caption-meter`}
+            className="h-1 overflow-hidden rounded-full bg-muted/50"
+            role="presentation"
+            aria-hidden
+          >
+            <div
+              className={cn("h-full rounded-full transition-[width] duration-150 ease-out", captionBarTone)}
+              style={{ width: `${captionFillRatio * 100}%` }}
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] tabular-nums text-muted">
+          <span className={cn(!hashtagsOk || !mentionsOk ? "font-medium text-red-600 dark:text-red-400" : undefined)}>
+            {hashtagCount}/{POST_LIMITS.maxHashtagTokens} hashtags · {mentionCount}/{POST_LIMITS.maxMentionUsernames}{" "}
+            @mentions
+          </span>
+        </div>
+        <p id={`${formId}-caption-hint`} className="text-xs leading-relaxed text-muted">
+          Up to {POST_LIMITS.captionMaxChars} characters. Use <span className="font-medium text-foreground">#tags</span> and{" "}
+          <span className="font-medium text-foreground">@username</span> in the caption — same rules as everywhere else in
+          CITYGRAM.
+        </p>
+      </div>
+
       {errorText && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <p
+          id={`${formId}-error`}
+          className="rounded-xl border border-red-500/35 bg-red-500/[0.07] px-4 py-3 text-sm text-red-700 dark:text-red-300"
+          role="alert"
+        >
           {errorText}
         </p>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <Button type="submit" className="w-full min-h-12" disabled={disabled || !canSubmit}>
           {phase === "uploading" ? "Uploading…" : phase === "finalizing" ? "Publishing…" : "Publish post"}
         </Button>
+        {!canSubmit && !busy && files.length === 0 && (
+          <p className="text-center text-[11px] text-muted">Add at least one photo or video to publish.</p>
+        )}
       </div>
 
       {busy && (
         <div
           id={`${formId}-publishing-status`}
-          className="absolute inset-0 z-50 flex cursor-wait flex-col items-center justify-center gap-3 rounded-2xl bg-background/80 px-6 text-center backdrop-blur-sm"
+          className="absolute inset-0 z-50 flex cursor-wait flex-col items-center justify-center gap-4 rounded-2xl bg-background/85 px-6 text-center backdrop-blur-md"
           role="status"
           aria-live="assertive"
         >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-muted">
+            {phase === "uploading" ? "Step 1 of 2" : "Step 2 of 2"}
+          </p>
           <span
-            className="inline-block h-9 w-9 animate-spin rounded-full border-2 border-accent border-t-transparent"
+            className="inline-block h-10 w-10 animate-spin rounded-full border-2 border-accent border-t-transparent"
             aria-hidden
           />
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">
-              {phase === "uploading" ? "Uploading media…" : "Saving your post…"}
+          <div className="max-w-xs space-y-1.5">
+            <p className="text-base font-semibold text-foreground">
+              {phase === "uploading" ? "Uploading your media" : "Publishing your post"}
             </p>
-            <p className="text-xs text-muted">
+            <p className="text-sm leading-snug text-muted">
               {phase === "uploading"
-                ? "Sending files directly to storage."
-                : "Creating your post — almost done."}
+                ? "Hang tight — files go straight to your city’s storage."
+                : "Finishing up — you’ll jump to the post when it’s ready."}
             </p>
           </div>
         </div>

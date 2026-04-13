@@ -26,8 +26,12 @@ export default async function CreatePostPage() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur safe-pt">
-        <Link href="/feed" className="min-h-10 min-w-10 rounded-full text-lg">
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border/50 bg-background/90 px-4 py-3 backdrop-blur-xl safe-pt">
+        <Link
+          href="/feed"
+          className="flex min-h-10 min-w-10 items-center justify-center rounded-full text-lg text-foreground transition hover:bg-foreground/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          aria-label="Back to feed"
+        >
           ←
         </Link>
         <div>
