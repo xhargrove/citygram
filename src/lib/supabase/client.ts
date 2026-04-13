@@ -6,6 +6,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 let browserClient: SupabaseClient | null = null;
 let warnedAboutAnonKeyShape = false;
 
+/** Public client keys Supabase accepts (legacy JWT anon or platform publishable key). */
+function looksLikePublicSupabaseKey(k: string): boolean {
+  return k.startsWith("eyJ") || k.startsWith("sb_publishable_");
+}
+
 export function createClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -17,13 +22,13 @@ export function createClient(): SupabaseClient {
     process.env.NODE_ENV === "development" &&
     typeof window !== "undefined" &&
     !warnedAboutAnonKeyShape &&
-    !key.startsWith("eyJ")
+    !looksLikePublicSupabaseKey(key)
   ) {
     warnedAboutAnonKeyShape = true;
     console.warn(
-      "[CITYGRAM] NEXT_PUBLIC_SUPABASE_ANON_KEY should be the anon (public) JWT from Supabase " +
-        "(Dashboard → Project Settings → API → Project API keys). It normally starts with eyJ. " +
-        "Using a publishable sb_* key here often causes 400 errors on signInWithPassword. " +
+      "[CITYGRAM] NEXT_PUBLIC_SUPABASE_ANON_KEY should be a public client key from Supabase " +
+        "(Dashboard → Project Settings → API → API Keys): either the legacy anon JWT (starts with eyJ) " +
+        "or the publishable key (starts with sb_publishable_). Do not use secret/service keys in the browser. " +
         "Restart the dev server after changing .env.local."
     );
   }
