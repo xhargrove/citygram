@@ -5,15 +5,15 @@ import { useRouter } from "next/navigation";
 import { finalizeCreatePost } from "@/actions/post";
 import { uploadDraftMediaToStorage } from "@/lib/post-media-upload";
 import { createClient } from "@/lib/supabase/client";
-import type { CityRow, NeighborhoodRow } from "@/types/database";
+import type { NeighborhoodRow } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { POST_LIMITS, countHashtagTokens } from "@/lib/post-limits";
 import { cn, parseMentionUsernames } from "@/lib/utils";
 
 type Props = {
-  cities: CityRow[];
-  defaultCityId: string;
+  homeCityId: string;
+  homeCityName: string;
   defaultNeighborhoodId: string | null;
 };
 
@@ -55,10 +55,10 @@ function totalBytes(files: File[]): number {
   return files.reduce((s, f) => s + f.size, 0);
 }
 
-export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }: Props) {
+export function CreatePostForm({ homeCityId, homeCityName, defaultNeighborhoodId }: Props) {
   const router = useRouter();
-  const [cityId, setCityId] = useState(defaultCityId);
   const [hoods, setHoods] = useState<NeighborhoodRow[]>([]);
+  const [neighborhoodId, setNeighborhoodId] = useState(defaultNeighborhoodId ?? "");
   const [caption, setCaption] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [clientError, setClientError] = useState<string | null>(null);
@@ -79,10 +79,17 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
     void supabase
       .from("neighborhoods")
       .select("*")
-      .eq("city_id", cityId)
+      .eq("city_id", homeCityId)
       .order("name")
       .then(({ data }) => setHoods((data as NeighborhoodRow[]) ?? []));
-  }, [cityId]);
+  }, [homeCityId]);
+
+  useEffect(() => {
+    setNeighborhoodId((prev) => {
+      if (!prev) return "";
+      return hoods.some((h) => h.id === prev) ? prev : "";
+    });
+  }, [homeCityId, hoods]);
 
   const totalSize = totalBytes(files);
   const hashtagCount = countHashtagTokens(caption);
@@ -137,7 +144,6 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formEl = e.currentTarget;
     setClientError(null);
     if (files.length === 0) {
       setClientError("Add at least one photo or video.");
@@ -169,11 +175,7 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
       return;
     }
 
-    // Read before any await: once `busy`, selects are disabled and are omitted from FormData.
-    const formDataNow = new FormData(formEl);
-    const publishCityId = String(formDataNow.get("city_id") ?? cityId).trim();
-    const nhNow = formDataNow.get("neighborhood_id");
-    const publishNeighborhoodId = typeof nhNow === "string" && nhNow.length > 0 ? nhNow : null;
+    const publishNeighborhoodId = neighborhoodId.trim().length > 0 ? neighborhoodId.trim() : null;
 
     const supabase = createClient();
     let uploadedPaths: string[] = [];
@@ -200,7 +202,7 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
 
       const res = await finalizeCreatePost({
         caption,
-        city_id: publishCityId,
+        city_id: homeCityId,
         neighborhood_id: publishNeighborhoodId,
         draft_id: draftId,
         media: items,
@@ -246,31 +248,21 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Create</p>
         <h1 className="font-display text-2xl font-semibold">Share a moment</h1>
         <p className="text-sm text-muted">
-          Media uploads from your device directly to Supabase Storage, then the post is saved. City defaults to your
-          home city — change it if you&apos;re posting while traveling. Caption and hashtag caps follow common
-          Instagram-style norms; total upload size is lower here (web-friendly).
+          Media uploads from your device directly to Supabase Storage, then the post is saved. Posts always publish to
+          your home city. Caption and hashtag caps follow common Instagram-style norms; total upload size is lower here
+          (web-friendly).
         </p>
       </header>
 
       <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted" htmlFor={`${formId}-city`}>
-          City
-        </label>
-        <select
-          id={`${formId}-city`}
-          name="city_id"
-          value={cityId}
-          onChange={(e) => setCityId(e.target.value)}
-          className="min-h-12 w-full rounded-xl border border-border bg-card px-4 text-sm"
-          required
-          disabled={disabled}
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Posting to</p>
+        <div
+          className="flex min-h-12 items-center rounded-xl border border-border bg-card/80 px-4 text-sm font-medium text-foreground"
+          aria-readonly
         >
-          {cities.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          {homeCityName}
+          <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-muted">Home city</span>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -280,7 +272,8 @@ export function CreatePostForm({ cities, defaultCityId, defaultNeighborhoodId }:
         <select
           id={`${formId}-hood`}
           name="neighborhood_id"
-          defaultValue={defaultNeighborhoodId ?? ""}
+          value={neighborhoodId}
+          onChange={(e) => setNeighborhoodId(e.target.value)}
           className="min-h-12 w-full rounded-xl border border-border bg-card px-4 text-sm"
           disabled={disabled}
         >

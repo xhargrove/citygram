@@ -32,6 +32,7 @@ async function rollbackCreatedPost(supabase: SupabaseClient, postId: string, sto
  * Creates `posts` + `post_media` after media was uploaded client-direct to Storage.
  * Validates auth, caption/hashtag/media limits, and that paths belong to this user + draft.
  * Resolves @mentions into `post_tagged_profiles` and sends in-app notifications.
+ * `city_id` must match the author’s `home_city_id` or the action rejects.
  */
 export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promise<CreatePostState> {
   const supabase = await createClient();
@@ -59,6 +60,11 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
     .eq("id", user.id)
     .maybeSingle();
   if (!profile?.home_city_id) return { error: "Complete onboarding first" };
+
+  const homeCityId = profile.home_city_id;
+  if (cityId !== homeCityId) {
+    return { error: "Posts can only be published to your home city" };
+  }
 
   if (caption.length > POST_LIMITS.captionMaxChars) {
     return { error: `Caption is limited to ${POST_LIMITS.captionMaxChars} characters.` };
@@ -94,11 +100,22 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
 
   const hashtags = parseHashtags(caption);
 
+  if (neighborhoodId) {
+    const { data: nhRow } = await supabase
+      .from("neighborhoods")
+      .select("city_id")
+      .eq("id", neighborhoodId)
+      .maybeSingle();
+    if (!nhRow || nhRow.city_id !== homeCityId) {
+      return { error: "Choose a neighborhood in your home city" };
+    }
+  }
+
   const { data: post, error: postErr } = await supabase
     .from("posts")
     .insert({
       author_id: user.id,
-      city_id: cityId,
+      city_id: homeCityId,
       neighborhood_id: neighborhoodId,
       caption: caption.length ? caption : null,
       hashtags,

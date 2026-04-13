@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CreatePostForm } from "@/components/create/create-post-form";
 import { createClient } from "@/lib/supabase/server";
-import type { CityRow } from "@/types/database";
 
 export default async function CreatePostPage() {
   const supabase = await createClient();
@@ -15,11 +14,15 @@ export default async function CreatePostPage() {
     .from("profiles")
     .select("home_city_id, neighborhood_id")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!profile?.home_city_id) redirect("/onboarding");
 
-  const { data: cities } = await supabase.from("cities").select("*").order("name");
+  const { data: homeCity } = await supabase
+    .from("cities")
+    .select("id, name")
+    .eq("id", profile.home_city_id)
+    .maybeSingle();
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg">
@@ -33,8 +36,8 @@ export default async function CreatePostPage() {
         </div>
       </header>
       <CreatePostForm
-        cities={(cities ?? []) as CityRow[]}
-        defaultCityId={profile.home_city_id}
+        homeCityId={profile.home_city_id}
+        homeCityName={homeCity?.name ?? "Your home city"}
         defaultNeighborhoodId={profile.neighborhood_id}
       />
     </div>

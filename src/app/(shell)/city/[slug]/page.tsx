@@ -24,6 +24,18 @@ export default async function CityPulsePage({ params }: Props) {
   const city = await fetchCityBySlug(supabase, slug);
   if (!city) notFound();
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("home_city_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const { data: homeCityMeta } = profile?.home_city_id
+    ? await supabase.from("cities").select("name").eq("id", profile.home_city_id).single()
+    : { data: null };
+
+  const isHomeCity = Boolean(profile?.home_city_id && profile.home_city_id === city.id);
+
   const [trendingPosts, creators, businesses, events] = await Promise.all([
     fetchTrendingPosts(supabase, city.id, user.id, 6),
     fetchTrendingCreators(supabase, city.id, 6),
@@ -66,13 +78,25 @@ export default async function CityPulsePage({ params }: Props) {
                 {city.name} will gain momentum as people post — quiet at launch is normal.
               </p>
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                <Link href="/create" className="text-sm font-semibold text-accent">
-                  Create a post →
-                </Link>
+                {isHomeCity ? (
+                  <Link href="/create" className="text-sm font-semibold text-accent">
+                    Create a post →
+                  </Link>
+                ) : (
+                  <Link href="/create" className="text-sm font-semibold text-accent">
+                    Post from home
+                    {homeCityMeta?.name ? ` (${homeCityMeta.name})` : ""} →
+                  </Link>
+                )}
                 <Link href={`/passport/${city.slug}`} className="text-sm font-semibold text-accent">
                   Open {city.name} in Passport →
                 </Link>
               </div>
+              {!isHomeCity && (
+                <p className="mt-3 text-xs text-muted">
+                  You can explore {city.name} here; publishing always goes to your home city.
+                </p>
+              )}
             </div>
           ) : (
             trendingPosts.map((p, i) => <PostCard key={p.id} post={p} priorityImage={i === 0} />)

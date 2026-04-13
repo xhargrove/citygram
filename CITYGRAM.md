@@ -41,7 +41,7 @@ Primary routes:
 | `/explore` | Browse other cities (Passport entry) |
 | `/passport`, `/passport/[slug]` | Passport Mode — another city’s feed |
 | `/city/[slug]` | City pulse (trending, businesses, events) |
-| `/create` | Create post (client-direct Storage upload + server finalize) |
+| `/create` | Create post **in your home city only** (client-direct Storage upload + server finalize) |
 | `/post/[id]` | Post + comments |
 | `/u/[username]` | Profile, follow, saved/tagged |
 | `/creator/[username]`, `/business/[username]` | Alias → profile (badges from `account_type`) |
@@ -55,8 +55,8 @@ Primary routes:
 1. **Data model** — Every profile has `home_city_id` (required after onboarding via `CHECK` constraint with `onboarding_completed`). Every post has `city_id` (NOT NULL).
 2. **Middleware** — Authenticated users without `onboarding_completed` are sent to `/onboarding` for any non-public route.
 3. **Home feed** — `/feed` loads posts with `city_id === profile.home_city_id` only. There is no global “for you” feed at startup.
-4. **Passport / explore** — Other cities are reached via `/explore`, `/passport/[slug]`, or `/city/[slug]`. The UI copy states that this does not replace the home feed.
-5. **Create post** — Defaults `city_id` to the member’s home city; user can change city when traveling.
+4. **Passport / explore** — Other cities are reached via `/explore`, `/passport/[slug]`, or `/city/[slug]`. Those surfaces are for **viewing and discovery**; they do not replace the home feed.
+5. **Create post** — Every published post uses `city_id === profile.home_city_id`. Users cannot publish into another city from the app; Passport and city pages are not alternate posting targets.
 
 ## Mobile-first layout
 
@@ -73,7 +73,7 @@ Primary routes:
 - Home city feed; Passport city feed; city pulse page; explore hub.
 - Posts with multi-image/video, captions, hashtags, storage upload, likes/saves/shares (share count via RPC), comments, follows.
 - Profiles with grid, saved (self), tagged posts list; **captions support `@username` mentions** (stored in `post_tagged_profiles`, in-app notification).
-- Notifications for follow, like, comment (inserted from server actions).
+- Notifications for follow, like, comment, mention (inserted from server actions).
 - Reports + basic admin remove for moderators/admins.
 - Creator/business **placeholders** (`account_type`, `creator_profiles`, `business_profiles`, sponsored flag on posts, events table).
 

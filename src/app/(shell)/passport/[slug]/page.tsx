@@ -30,6 +30,7 @@ export default async function PassportCityPage({ params }: Props) {
     ? await supabase.from("cities").select("name, slug").eq("id", profile.home_city_id).single()
     : { data: null };
   const home = homeCity;
+  const isHomeCity = Boolean(profile?.home_city_id && profile.home_city_id === city.id);
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg pb-6">
@@ -58,28 +59,56 @@ export default async function PassportCityPage({ params }: Props) {
             <p className="font-display text-xl font-semibold text-foreground">
               Nothing public in {city.name} yet
             </p>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              You&apos;re viewing this city in Passport — the feed is empty until someone posts. Start
-              the thread or come back later.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <Link
-                href="/create"
-                className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-city"
-              >
-                Create a post
-              </Link>
-              <Link
-                href="/explore"
-                className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold"
-              >
-                Browse other cities
-              </Link>
-            </div>
-            <p className="mt-4 text-xs text-muted">
-              In create, choose <span className="font-medium text-foreground">{city.name}</span> so the
-              post lands here.
-            </p>
+            {isHomeCity ? (
+              <>
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  You&apos;re viewing your home city in Passport — the feed is empty until someone posts. Start
+                  the thread or come back later.
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                  <Link
+                    href="/create"
+                    className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-city"
+                  >
+                    Create a post
+                  </Link>
+                  <Link
+                    href="/explore"
+                    className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold"
+                  >
+                    Browse other cities
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  Passport is for watching <span className="font-medium text-foreground">{city.name}</span>. New
+                  posts always publish to your home city
+                  {home ? (
+                    <>
+                      {" "}
+                      (<span className="font-medium text-foreground">{home.name}</span>)
+                    </>
+                  ) : null}
+                  .
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                  <Link
+                    href="/create"
+                    className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-city"
+                  >
+                    Create at home
+                  </Link>
+                  <Link
+                    href="/explore"
+                    className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold"
+                  >
+                    Browse other cities
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           posts.map((p, i) => <PostCard key={p.id} post={p} priorityImage={i === 0} />)
