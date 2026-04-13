@@ -7,9 +7,16 @@ import type {
   ProfileRow,
   PostWithAuthor,
 } from "@/types/database";
+import { logServerError } from "@/lib/server-log";
 
 /** Default page size for city-scoped feeds (home, passport, etc.). */
 export const CITY_FEED_PAGE_SIZE = 20;
+const MAX_FEED_PAGE_SIZE = 50;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(v: string): boolean {
+  return UUID_RE.test(v);
+}
 
 type TaggedProfile = Pick<ProfileRow, "id" | "username" | "display_name">;
 
@@ -51,6 +58,22 @@ export async function fetchCityFeed(
   limit: number = CITY_FEED_PAGE_SIZE,
   offset = 0
 ): Promise<PostWithAuthor[]> {
+  if (!isUuid(cityId) || !isUuid(viewerId)) {
+    const err = new Error("fetchCityFeed: invalid cityId or viewerId");
+    logServerError("fetchCityFeed.invalid_input", { cityId, viewerId, limit, offset }, err);
+    throw err;
+  }
+  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_FEED_PAGE_SIZE) {
+    const err = new Error("fetchCityFeed: invalid limit");
+    logServerError("fetchCityFeed.invalid_limit", { cityId, viewerId, limit, offset }, err);
+    throw err;
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    const err = new Error("fetchCityFeed: invalid offset");
+    logServerError("fetchCityFeed.invalid_offset", { cityId, viewerId, limit, offset }, err);
+    throw err;
+  }
+
   const { data: posts, error } = await supabase
     .from("posts")
     .select("*")
@@ -60,6 +83,7 @@ export async function fetchCityFeed(
     .range(offset, offset + limit - 1);
 
   if (error) {
+    logServerError("fetchCityFeed.posts_query_failed", { cityId, viewerId, limit, offset }, error);
     throw new Error(`fetchCityFeed: ${error.message}`);
   }
   if (!posts?.length) {
@@ -139,9 +163,17 @@ export async function fetchPostById(
   postId: string,
   viewerId: string
 ): Promise<PostWithAuthor | null> {
+  if (!isUuid(postId)) return null;
+  if (!isUuid(viewerId)) {
+    const err = new Error("fetchPostById: invalid viewerId");
+    logServerError("fetchPostById.invalid_input", { postId, viewerId }, err);
+    throw err;
+  }
+
   const { data: row, error: postErr } = await supabase.from("posts").select("*").eq("id", postId).maybeSingle();
 
   if (postErr) {
+    logServerError("fetchPostById.post_query_failed", { postId, viewerId }, postErr);
     throw new Error(`fetchPostById: ${postErr.message}`);
   }
   if (!row || row.is_removed) {
@@ -173,12 +205,30 @@ export async function fetchPostById(
         }),
   ]);
 
-  if (authorErr) throw new Error(`fetchPostById: ${authorErr.message}`);
-  if (cityErr) throw new Error(`fetchPostById: ${cityErr.message}`);
-  if (mediaErr) throw new Error(`fetchPostById: ${mediaErr.message}`);
-  if (likeErr) throw new Error(`fetchPostById: ${likeErr.message}`);
-  if (saveErr) throw new Error(`fetchPostById: ${saveErr.message}`);
-  if (hoodErr) throw new Error(`fetchPostById: ${hoodErr.message}`);
+  if (authorErr) {
+    logServerError("fetchPostById.author_query_failed", { postId, viewerId, authorId: row.author_id }, authorErr);
+    throw new Error(`fetchPostById: ${authorErr.message}`);
+  }
+  if (cityErr) {
+    logServerError("fetchPostById.city_query_failed", { postId, viewerId, cityId: row.city_id }, cityErr);
+    throw new Error(`fetchPostById: ${cityErr.message}`);
+  }
+  if (mediaErr) {
+    logServerError("fetchPostById.media_query_failed", { postId, viewerId }, mediaErr);
+    throw new Error(`fetchPostById: ${mediaErr.message}`);
+  }
+  if (likeErr) {
+    logServerError("fetchPostById.like_query_failed", { postId, viewerId }, likeErr);
+    throw new Error(`fetchPostById: ${likeErr.message}`);
+  }
+  if (saveErr) {
+    logServerError("fetchPostById.save_query_failed", { postId, viewerId }, saveErr);
+    throw new Error(`fetchPostById: ${saveErr.message}`);
+  }
+  if (hoodErr) {
+    logServerError("fetchPostById.neighborhood_query_failed", { postId, viewerId, neighborhoodId: row.neighborhood_id }, hoodErr);
+    throw new Error(`fetchPostById: ${hoodErr.message}`);
+  }
 
   if (!author || !city) return null;
 

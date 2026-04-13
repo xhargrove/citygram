@@ -4,12 +4,15 @@ import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { POST_LIMITS, countHashtagTokens } from "@/lib/post-limits";
 import { createClient } from "@/lib/supabase/server";
+import { logServerError } from "@/lib/server-log";
 import { parseHashtags, parseMentionUsernames } from "@/lib/utils";
 import type { FinalizeCreatePostInput } from "@/types/post-create";
 
 export type CreatePostState = { error?: string; ok?: boolean; postId?: string };
 
 const DRAFT_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isPathUnderDraft(userId: string, draftId: string, storagePath: string): boolean {
@@ -53,6 +56,8 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
       : null;
 
   if (!cityId) return { error: "City is required" };
+  if (!UUID_RE.test(cityId)) return { error: "Invalid city reference" };
+  if (neighborhoodId && !UUID_RE.test(neighborhoodId)) return { error: "Invalid neighborhood reference" };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -123,7 +128,10 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
     .select("id")
     .single();
 
-  if (postErr || !post) return { error: postErr?.message ?? "Could not create post" };
+  if (postErr || !post) {
+    logServerError("finalizeCreatePost.post_insert_failed", { userId: user.id, cityId: homeCityId }, postErr);
+    return { error: postErr?.message ?? "Could not create post" };
+  }
 
   const storagePaths = media.map((m) => m.storage_path);
   const rows = media.map((m) => ({
@@ -135,6 +143,7 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
 
   const { error: mediaErr } = await supabase.from("post_media").insert(rows);
   if (mediaErr) {
+    logServerError("finalizeCreatePost.media_insert_failed", { userId: user.id, cityId: homeCityId, postId: post.id }, mediaErr);
     await rollbackCreatedPost(supabase, post.id, storagePaths);
     return { error: mediaErr.message };
   }
@@ -161,6 +170,7 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
 
       const { error: tagErr } = await supabase.from("post_tagged_profiles").insert(tagRows);
       if (tagErr) {
+        logServerError("finalizeCreatePost.tag_insert_failed", { userId: user.id, cityId: homeCityId, postId: post.id }, tagErr);
         await rollbackCreatedPost(supabase, post.id, storagePaths);
         return { error: tagErr.message };
       }
@@ -174,6 +184,7 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
 
       const { error: notifErr } = await supabase.from("notifications").insert(notifRows);
       if (notifErr) {
+        logServerError("finalizeCreatePost.mention_notif_failed", { userId: user.id, cityId: homeCityId, postId: post.id }, notifErr);
         await rollbackCreatedPost(supabase, post.id, storagePaths);
         return { error: notifErr.message };
       }
@@ -191,6 +202,7 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
     .limit(CITY_POST_NOTIFY_CAP);
 
   if (residentErr) {
+    logServerError("finalizeCreatePost.city_resident_query_failed", { userId: user.id, cityId: homeCityId, postId: post.id }, residentErr);
     await rollbackCreatedPost(supabase, post.id, storagePaths);
     return { error: residentErr.message };
   }
@@ -205,6 +217,7 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
     }));
     const { error: cityPostNotifErr } = await supabase.from("notifications").insert(cityPostNotifs);
     if (cityPostNotifErr) {
+      logServerError("finalizeCreatePost.city_post_notif_failed", { userId: user.id, cityId: homeCityId, postId: post.id }, cityPostNotifErr);
       await rollbackCreatedPost(supabase, post.id, storagePaths);
       return { error: cityPostNotifErr.message };
     }
