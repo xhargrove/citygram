@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FollowButton } from "@/components/profile/follow-button";
 import { PostGrid } from "@/components/profile/post-grid";
+import { ProfileAvatarUpload } from "@/components/profile/profile-avatar-upload";
 import { Avatar } from "@/components/media/avatar";
 import {
   fetchFollowCounts,
@@ -64,7 +65,16 @@ export default async function UserProfilePage({ params, searchParams }: Props) {
     <div className="mx-auto min-h-dvh max-w-lg">
       <header className="border-b border-border px-4 pb-4 pt-6 safe-pt">
         <div className="flex gap-4">
-          <Avatar src={profile.avatar_url} alt={profile.display_name} size="lg" />
+          <div className="flex shrink-0 flex-col items-center gap-2">
+            <Avatar src={profile.avatar_url} alt={profile.display_name} size="lg" />
+            {isSelf && (
+              <ProfileAvatarUpload
+                userId={user.id}
+                hasAvatar={Boolean(profile.avatar_url)}
+                compact
+              />
+            )}
+          </div>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-2xl font-semibold">{profile.display_name}</h1>

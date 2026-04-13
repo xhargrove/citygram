@@ -180,6 +180,36 @@ export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promis
     }
   }
 
+  // Let other onboarded residents in the same home city know there's a new post (capped for scale).
+  const CITY_POST_NOTIFY_CAP = 300;
+  const { data: residentRows, error: residentErr } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("home_city_id", homeCityId)
+    .neq("id", user.id)
+    .eq("onboarding_completed", true)
+    .limit(CITY_POST_NOTIFY_CAP);
+
+  if (residentErr) {
+    await rollbackCreatedPost(supabase, post.id, storagePaths);
+    return { error: residentErr.message };
+  }
+
+  const residentIds = (residentRows ?? []).map((r) => r.id).filter((id) => id !== user.id);
+  if (residentIds.length > 0) {
+    const cityPostNotifs = residentIds.map((recipient_id) => ({
+      recipient_id,
+      actor_id: user.id,
+      type: "city_post" as const,
+      post_id: post.id,
+    }));
+    const { error: cityPostNotifErr } = await supabase.from("notifications").insert(cityPostNotifs);
+    if (cityPostNotifErr) {
+      await rollbackCreatedPost(supabase, post.id, storagePaths);
+      return { error: cityPostNotifErr.message };
+    }
+  }
+
   revalidatePath("/feed");
   revalidatePath(`/city/`);
   return { ok: true, postId: post.id };

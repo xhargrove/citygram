@@ -11,6 +11,7 @@ On the web, CITYGRAM leads with a **landing page** presence at `/` (positioning,
 1. **Create a Supabase project** at [supabase.com](https://supabase.com).
 2. **Run SQL**  
    - Execute `supabase/migrations/001_citygram_schema.sql` in the SQL editor (or Supabase CLI).  
+   - Then `supabase/migrations/002_notification_city_post.sql` (adds the `city_post` notification enum value).  
    - Run `supabase/seed.sql` for reference cities (US metros + neighborhoods), and interests.  
    - Create bucket `post-media` (public read for MVP), then run `supabase/storage.sql` for policies.
 3. **Environment** — copy `.env.local.example` to `.env.local` and set:

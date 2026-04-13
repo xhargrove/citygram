@@ -28,6 +28,22 @@ const CITIES = [
     color: "bg-rose-50 text-rose-900 border-rose-200",
     dot: "bg-rose-400",
   },
+  {
+    slug: "st-louis",
+    name: "St. Louis",
+    tagline: "River city, brick & blues",
+    stat: "6.2k posts this week",
+    color: "bg-indigo-50 text-indigo-900 border-indigo-200",
+    dot: "bg-indigo-400",
+  },
+  {
+    slug: "jackson-ms",
+    name: "Jackson",
+    tagline: "Capital city, Southern soul",
+    stat: "4.1k posts this week",
+    color: "bg-emerald-50 text-emerald-900 border-emerald-200",
+    dot: "bg-emerald-500",
+  },
 ];
 
 const HOW_IT_WORKS = [
@@ -86,7 +102,7 @@ export default function LandingPage() {
             {/* Eyebrow */}
             <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/10 px-3 py-1 text-xs font-medium text-muted">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-              Now live in Atlanta · Austin · Portland
+              Now live in Atlanta · Austin · Portland · St. Louis · Jackson, MS
             </p>
 
             {/* Headline */}
@@ -131,7 +147,7 @@ export default function LandingPage() {
             <p className="mb-8 text-xs font-semibold uppercase tracking-widest text-muted">
               Live cities
             </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {CITIES.map((city) => (
                 <div key={city.slug} className={`rounded-2xl border p-5 ${city.color}`}>
                   <div className="mb-3 flex items-center gap-2">

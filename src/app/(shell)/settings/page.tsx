@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signOut } from "@/actions/auth";
+import { Avatar } from "@/components/media/avatar";
+import { ProfileAvatarUpload } from "@/components/profile/profile-avatar-upload";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
@@ -14,7 +16,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username, role")
+    .select("username, role, display_name, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -25,6 +27,22 @@ export default async function SettingsPage() {
         <h1 className="font-display text-3xl font-semibold">Control center</h1>
         <p className="text-sm text-muted">Account security lives in Supabase Auth — we keep UI lean.</p>
       </header>
+
+      <section className="space-y-4 rounded-3xl border border-border bg-card p-5">
+        <div>
+          <p className="text-sm font-semibold">Profile photo</p>
+          <p className="text-xs text-muted">Shown on posts, comments, and your profile. JPG, PNG, WebP, or GIF — max 5MB.</p>
+        </div>
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+          <Avatar
+            src={profile?.avatar_url}
+            alt={profile?.display_name ?? "You"}
+            size="lg"
+            className="ring-2"
+          />
+          <ProfileAvatarUpload userId={user.id} hasAvatar={Boolean(profile?.avatar_url)} />
+        </div>
+      </section>
 
       <section className="space-y-4 rounded-3xl border border-border bg-card p-5">
         <div className="flex items-center justify-between gap-3">

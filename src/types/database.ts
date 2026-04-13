@@ -1,6 +1,6 @@
 export type AccountType = "standard" | "creator" | "business";
 export type AppRole = "user" | "moderator" | "admin";
-export type NotificationType = "follow" | "like" | "comment" | "mention";
+export type NotificationType = "follow" | "like" | "comment" | "mention" | "city_post";
 export type ReportStatus = "open" | "reviewed" | "dismissed";
 
 export type CityRow = {

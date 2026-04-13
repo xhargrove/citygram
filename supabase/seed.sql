@@ -30,7 +30,9 @@ VALUES
   ('a000001a-0000-4000-8000-00000000001a', 'minneapolis', 'Minneapolis', 'Minnesota', 'US', 'Chain of lakes, winter light, Midwest warmth.'),
   ('a000001b-0000-4000-8000-00000000001b', 'tampa', 'Tampa', 'Florida', 'US', 'Bay lightning, cigar history, Gulf humidity.'),
   ('a000001c-0000-4000-8000-00000000001c', 'salt-lake-city', 'Salt Lake City', 'Utah', 'US', 'Wasatch views, grid streets, outdoor cathedral.'),
-  ('a000001d-0000-4000-8000-00000000001d', 'new-orleans', 'New Orleans', 'Louisiana', 'US', 'Brass bands, bayou soul, laissez les bons temps rouler.')
+  ('a000001d-0000-4000-8000-00000000001d', 'new-orleans', 'New Orleans', 'Louisiana', 'US', 'Brass bands, bayou soul, laissez les bons temps rouler.'),
+  ('a000001e-0000-4000-8000-00000000001e', 'st-louis', 'St. Louis', 'Missouri', 'US', 'Gateway arch views, brick neighborhoods, Midwest soul with river-town edge.'),
+  ('a000001f-0000-4000-8000-00000000001f', 'jackson-ms', 'Jackson', 'Mississippi', 'US', 'Capital city blues, soul food, and Deep South neighborhood pride.')
 ON CONFLICT (slug) DO NOTHING;
 
 -- Neighborhoods & nearby areas (expand freely; ON CONFLICT keeps re-runs safe)
@@ -465,7 +467,38 @@ VALUES
   ('a000001d-0000-4000-8000-00000000001d', 'metairie-kenner', 'Metairie / Kenner'),
   ('a000001d-0000-4000-8000-00000000001d', 'chalmette-east', 'Chalmette / East'),
   ('a000001d-0000-4000-8000-00000000001d', 'slidell-northshore', 'Slidell / Northshore'),
-  ('a000001d-0000-4000-8000-00000000001d', 'warehouse-district-nola', 'Warehouse District / CBD')
+  ('a000001d-0000-4000-8000-00000000001d', 'warehouse-district-nola', 'Warehouse District / CBD'),
+
+  -- St. Louis
+  ('a000001e-0000-4000-8000-00000000001e', 'central-west-end', 'Central West End'),
+  ('a000001e-0000-4000-8000-00000000001e', 'soulard', 'Soulard'),
+  ('a000001e-0000-4000-8000-00000000001e', 'lafayette-square-stl', 'Lafayette Square'),
+  ('a000001e-0000-4000-8000-00000000001e', 'the-hill', 'The Hill'),
+  ('a000001e-0000-4000-8000-00000000001e', 'tower-grove', 'Tower Grove / Shaw'),
+  ('a000001e-0000-4000-8000-00000000001e', 'delmar-loop', 'Delmar Loop'),
+  ('a000001e-0000-4000-8000-00000000001e', 'downtown-stl', 'Downtown / Gateway Arch'),
+  ('a000001e-0000-4000-8000-00000000001e', 'clayton-brentwood', 'Clayton / Brentwood'),
+  ('a000001e-0000-4000-8000-00000000001e', 'kirkwood-webster', 'Kirkwood / Webster Groves'),
+  ('a000001e-0000-4000-8000-00000000001e', 'university-city', 'University City'),
+  ('a000001e-0000-4000-8000-00000000001e', 'south-grand', 'South Grand'),
+  ('a000001e-0000-4000-8000-00000000001e', 'benton-park', 'Benton Park'),
+  ('a000001e-0000-4000-8000-00000000001e', 'maplewood-richmond-heights', 'Maplewood / Richmond Heights'),
+  ('a000001e-0000-4000-8000-00000000001e', 'ballpark-village-adjacent', 'Ballpark Village / Downtown West'),
+
+  -- Jackson, MS (slug jackson-ms — distinct from Jacksonville, FL)
+  ('a000001f-0000-4000-8000-00000000001f', 'downtown-jxn', 'Downtown Jackson'),
+  ('a000001f-0000-4000-8000-00000000001f', 'fondren', 'Fondren'),
+  ('a000001f-0000-4000-8000-00000000001f', 'belhaven', 'Belhaven'),
+  ('a000001f-0000-4000-8000-00000000001f', 'belhaven-heights', 'Belhaven Heights'),
+  ('a000001f-0000-4000-8000-00000000001f', 'lefleur-east', 'LeFleur East'),
+  ('a000001f-0000-4000-8000-00000000001f', 'flowood-ridgeland', 'Flowood / Ridgeland'),
+  ('a000001f-0000-4000-8000-00000000001f', 'madison-canton', 'Madison / Canton'),
+  ('a000001f-0000-4000-8000-00000000001f', 'pearl-brandon', 'Pearl / Brandon'),
+  ('a000001f-0000-4000-8000-00000000001f', 'north-jackson', 'North Jackson'),
+  ('a000001f-0000-4000-8000-00000000001f', 'south-jackson', 'South Jackson'),
+  ('a000001f-0000-4000-8000-00000000001f', 'west-jackson', 'West Jackson / Clinton corridor'),
+  ('a000001f-0000-4000-8000-00000000001f', 'byram-terry', 'Byram / Terry'),
+  ('a000001f-0000-4000-8000-00000000001f', 'old-canton-road', 'Old Canton Road corridor')
 ON CONFLICT (city_id, slug) DO NOTHING;
 
 -- Interests
