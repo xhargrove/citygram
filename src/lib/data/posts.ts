@@ -1,5 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CityRow, PostMediaRow, PostRow, ProfileRow, PostWithAuthor } from "@/types/database";
+import type {
+  CityRow,
+  NeighborhoodRow,
+  PostMediaRow,
+  PostRow,
+  ProfileRow,
+  PostWithAuthor,
+} from "@/types/database";
 
 /** Default page size for city-scoped feeds (home, passport, etc.). */
 export const CITY_FEED_PAGE_SIZE = 20;
@@ -52,22 +59,36 @@ export async function fetchCityFeed(
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (error || !posts?.length) {
+  if (error) {
+    throw new Error(`fetchCityFeed: ${error.message}`);
+  }
+  if (!posts?.length) {
     return [];
   }
 
   const postIds = posts.map((p) => p.id);
   const authorIds = [...new Set(posts.map((p) => p.author_id))];
+  const neighborhoodIds = [...new Set(posts.map((p) => p.neighborhood_id).filter(Boolean))] as string[];
 
-  const [{ data: authors }, { data: city }, { data: mediaRows }, { data: likes }, { data: saves }, taggedByPost] =
-    await Promise.all([
-      supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", authorIds),
-      supabase.from("cities").select("id, slug, name").eq("id", cityId).single(),
-      supabase.from("post_media").select("*").in("post_id", postIds),
-      supabase.from("likes").select("post_id").eq("profile_id", viewerId).in("post_id", postIds),
-      supabase.from("saved_posts").select("post_id").eq("profile_id", viewerId).in("post_id", postIds),
-      fetchTaggedProfilesByPostIds(supabase, postIds),
-    ]);
+  const [
+    { data: authors },
+    { data: city },
+    { data: mediaRows },
+    { data: likes },
+    { data: saves },
+    { data: neighborhoodRows },
+    taggedByPost,
+  ] = await Promise.all([
+    supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", authorIds),
+    supabase.from("cities").select("id, slug, name, region").eq("id", cityId).single(),
+    supabase.from("post_media").select("*").in("post_id", postIds),
+    supabase.from("likes").select("post_id").eq("profile_id", viewerId).in("post_id", postIds),
+    supabase.from("saved_posts").select("post_id").eq("profile_id", viewerId).in("post_id", postIds),
+    neighborhoodIds.length > 0
+      ? supabase.from("neighborhoods").select("id, name").in("id", neighborhoodIds)
+      : Promise.resolve({ data: [] as Pick<NeighborhoodRow, "id" | "name">[] }),
+    fetchTaggedProfilesByPostIds(supabase, postIds),
+  ]);
 
   const authorMap = new Map((authors ?? []).map((a) => [a.id, a as ProfileRow]));
   const mediaByPost = new Map<string, PostMediaRow[]>();
@@ -84,13 +105,17 @@ export async function fetchCityFeed(
   const liked = new Set(likes?.map((l) => l.post_id));
   const saved = new Set(saves?.map((s) => s.post_id));
 
-  const cityRow = city as Pick<CityRow, "id" | "slug" | "name"> | null;
+  const cityRow = city as Pick<CityRow, "id" | "slug" | "name" | "region"> | null;
+  const neighborhoodMap = new Map(
+    (neighborhoodRows ?? []).map((n) => [n.id, n as Pick<NeighborhoodRow, "id" | "name">])
+  );
 
   return posts.map((row) => {
     const author = authorMap.get(row.author_id);
     if (!author || !cityRow) {
       return null;
     }
+    const hoodId = row.neighborhood_id;
     return {
       ...(row as PostRow),
       author: {
@@ -100,6 +125,7 @@ export async function fetchCityFeed(
         avatar_url: author.avatar_url,
       },
       city: cityRow,
+      neighborhood: hoodId ? neighborhoodMap.get(hoodId) ?? null : null,
       media: mediaByPost.get(row.id) ?? [],
       liked_by_me: liked.has(row.id),
       saved_by_me: saved.has(row.id),
@@ -117,17 +143,20 @@ export async function fetchPostById(
 
   if (error || !row || row.is_removed) return null;
 
-  const [{ data: author }, { data: city }, { data: mediaRows }, { data: likeRow }, { data: saveRow }] =
+  const [{ data: author }, { data: city }, { data: mediaRows }, { data: likeRow }, { data: saveRow }, { data: hood }] =
     await Promise.all([
       supabase
         .from("profiles")
         .select("id, username, display_name, avatar_url")
         .eq("id", row.author_id)
         .maybeSingle(),
-      supabase.from("cities").select("id, slug, name").eq("id", row.city_id).single(),
+      supabase.from("cities").select("id, slug, name, region").eq("id", row.city_id).single(),
       supabase.from("post_media").select("*").eq("post_id", postId).order("sort_order"),
       supabase.from("likes").select("post_id").eq("post_id", postId).eq("profile_id", viewerId).maybeSingle(),
       supabase.from("saved_posts").select("post_id").eq("post_id", postId).eq("profile_id", viewerId).maybeSingle(),
+      row.neighborhood_id
+        ? supabase.from("neighborhoods").select("id, name").eq("id", row.neighborhood_id).maybeSingle()
+        : Promise.resolve({ data: null as Pick<NeighborhoodRow, "id" | "name"> | null }),
     ]);
 
   if (!author || !city) return null;
@@ -139,6 +168,7 @@ export async function fetchPostById(
     ...(row as PostRow),
     author: author as PostWithAuthor["author"],
     city: city as PostWithAuthor["city"],
+    neighborhood: (hood as Pick<NeighborhoodRow, "id" | "name"> | null) ?? null,
     media,
     liked_by_me: Boolean(likeRow),
     saved_by_me: Boolean(saveRow),
