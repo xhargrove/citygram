@@ -13,8 +13,9 @@ export default async function PassportHubPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Passport</p>
         <h1 className="font-display text-3xl font-semibold">Travel on purpose</h1>
         <p className="text-sm leading-relaxed text-muted">
-          Passport Mode opens another city&apos;s ecosystem — trending voices, local businesses, and
-          events — without muting your home feed. Your default world stays rooted where you live.
+          Choose any city — yours or another — to open its Passport feed. Your day-to-day world stays on the{" "}
+          <span className="font-medium text-foreground">My city</span> tab; this screen is for browsing on
+          purpose.
         </p>
       </header>
 
