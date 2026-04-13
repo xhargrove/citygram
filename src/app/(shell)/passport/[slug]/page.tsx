@@ -39,7 +39,11 @@ export default async function PassportCityPage({ params }: Props) {
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-accent">Passport</p>
             <h1 className="font-display text-2xl font-semibold">{city.name}</h1>
-            <p className="text-xs text-muted">You&apos;re visiting another city ecosystem.</p>
+            <p className="text-xs text-muted">
+              {isHomeCity
+                ? "Your home city in Passport — same place as your default feed, different chrome."
+                : "You&apos;re visiting another city ecosystem."}
+            </p>
           </div>
           <Link href="/feed" className="text-xs font-semibold text-muted">
             Home feed
