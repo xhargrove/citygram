@@ -41,62 +41,74 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
+  try {
+    const supabase = createServerClient(url, key, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request: { headers: request.headers } });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request: { headers: request.headers } });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options)
-        );
-      },
-    },
-  });
+    });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  // 1. Signed-out user hitting a protected route → login
-  if (!user && !isPublic(pathname)) {
+    // 1. Signed-out user hitting a protected route → login
+    if (!user && !isPublic(pathname)) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("next", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (!user) {
+      return response;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const onboardingDone = profile?.onboarding_completed === true;
+
+    // 2. Incomplete onboarding → app routes (except public + /onboarding) → /onboarding
+    if (!onboardingDone && pathname !== "/onboarding" && !isPublic(pathname)) {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
+
+    // 3. Onboarding complete but still on /onboarding → feed
+    if (onboardingDone && pathname === "/onboarding") {
+      return NextResponse.redirect(new URL("/feed", request.url));
+    }
+
+    // 4. Signed-in user on auth/marketing pages (not landing) → onboarding or feed
+    if (AUTH_MARKETING.has(pathname)) {
+      const dest = onboardingDone ? "/feed" : "/onboarding";
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
+
+    return response;
+  } catch (err) {
+    // Network / config errors from Supabase on the Edge runtime must not take down the whole page (500).
+    console.error("[Citygram middleware] Supabase error:", err);
+    if (isPublic(pathname)) {
+      return NextResponse.next();
+    }
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
-
-  if (!user) {
-    return response;
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const onboardingDone = profile?.onboarding_completed === true;
-
-  // 2. Incomplete onboarding → app routes (except public + /onboarding) → /onboarding
-  if (!onboardingDone && pathname !== "/onboarding" && !isPublic(pathname)) {
-    return NextResponse.redirect(new URL("/onboarding", request.url));
-  }
-
-  // 3. Onboarding complete but still on /onboarding → feed
-  if (onboardingDone && pathname === "/onboarding") {
-    return NextResponse.redirect(new URL("/feed", request.url));
-  }
-
-  // 4. Signed-in user on auth/marketing pages (not landing) → onboarding or feed
-  if (AUTH_MARKETING.has(pathname)) {
-    const dest = onboardingDone ? "/feed" : "/onboarding";
-    return NextResponse.redirect(new URL(dest, request.url));
-  }
-
-  return response;
 }
 
 export const config = {
