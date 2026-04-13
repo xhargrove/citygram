@@ -60,9 +60,22 @@ export default async function CityPulsePage({ params }: Props) {
         </div>
         <div className="space-y-4">
           {trendingPosts.length === 0 ? (
-            <p className="text-sm text-muted">No momentum yet — seed a few posts to wake the block.</p>
+            <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-8 text-center">
+              <p className="text-sm font-medium text-foreground">Trending starts with real posts</p>
+              <p className="mt-2 text-sm text-muted">
+                {city.name} will gain momentum as people post — quiet at launch is normal.
+              </p>
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                <Link href="/create" className="text-sm font-semibold text-accent">
+                  Create a post →
+                </Link>
+                <Link href={`/passport/${city.slug}`} className="text-sm font-semibold text-accent">
+                  Open {city.name} in Passport →
+                </Link>
+              </div>
+            </div>
           ) : (
-            trendingPosts.map((p) => <PostCard key={p.id} post={p} />)
+            trendingPosts.map((p, i) => <PostCard key={p.id} post={p} priorityImage={i === 0} />)
           )}
         </div>
       </section>
@@ -71,7 +84,9 @@ export default async function CityPulsePage({ params }: Props) {
         <h2 className="font-display text-xl font-semibold">Trending creators</h2>
         <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
           {creators.length === 0 ? (
-            <p className="text-sm text-muted">Creators will appear as the scene grows.</p>
+            <p className="text-sm text-muted">
+              Creator spotlights appear as locals show up — the roster fills in with real voices.
+            </p>
           ) : (
             creators.map((c) => (
               <Link
@@ -92,7 +107,9 @@ export default async function CityPulsePage({ params }: Props) {
         <h2 className="font-display text-xl font-semibold">Local businesses</h2>
         <div className="mt-4 space-y-3">
           {businesses.length === 0 ? (
-            <p className="text-sm text-muted">Business profiles unlock as partners join the pilot.</p>
+            <p className="text-sm text-muted">
+              Local business cards go live when partners onboard — stay tuned for the pilot.
+            </p>
           ) : (
             businesses.map((b) => (
               <Link
@@ -115,7 +132,9 @@ export default async function CityPulsePage({ params }: Props) {
         <h2 className="font-display text-xl font-semibold">Local events</h2>
         <div className="mt-4 space-y-3">
           {events.length === 0 ? (
-            <p className="text-sm text-muted">Event posts stay lightweight until promoters connect.</p>
+            <p className="text-sm text-muted">
+              Events show up when they&apos;re added — nothing scheduled here yet.
+            </p>
           ) : (
             events.map((ev) => (
               <div key={ev.id} className="rounded-2xl border border-border bg-card px-4 py-3">

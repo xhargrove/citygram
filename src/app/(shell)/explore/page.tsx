@@ -13,7 +13,7 @@ export default async function ExploreCitiesPage() {
     .from("profiles")
     .select("home_city_id")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   const homeId = profile?.home_city_id;
 
@@ -23,6 +23,7 @@ export default async function ExploreCitiesPage() {
 
   const suggested = homeId ? list.filter((c) => c.id !== homeId).slice(0, 4) : list.slice(0, 4);
   const nearby = list.filter((c) => c.id !== homeId).slice(0, 6);
+  const noOtherCities = suggested.length === 0 && nearby.length === 0;
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg px-4 pb-24 pt-6 safe-pt">
@@ -30,39 +31,72 @@ export default async function ExploreCitiesPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Explore</p>
         <h1 className="font-display text-3xl font-semibold">Choose your next city</h1>
         <p className="text-sm text-muted">
-          Your feed always opens at home. This screen is for intentional travel — Passport Mode keeps
-          the context feeling like a trip, not a toggle.
+          Pick a city, open it in Passport, and scroll that place on purpose — separate from your home
+          feed.
         </p>
         <Link
           href="/search"
-          className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-border bg-card px-4 text-sm font-semibold"
+          className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-border bg-card px-4 text-sm font-semibold transition-colors hover:bg-foreground/5"
         >
           Search cities, people, tags…
         </Link>
       </header>
 
-      <section className="mb-8 space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Suggested</h2>
-        <div className="grid gap-3">
-          {suggested.map((city) => (
-            <CityCard key={city.id} city={city} />
-          ))}
+      {list.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card/40 px-5 py-10 text-center">
+          <p className="font-display text-lg font-semibold text-foreground">No cities in the directory yet</p>
+          <p className="mt-2 text-sm text-muted">
+            Explore fills in automatically once cities exist in your project — the app isn&apos;t broken,
+            the roster is just empty.
+          </p>
         </div>
-      </section>
+      ) : noOtherCities ? (
+        <div className="rounded-2xl border border-border bg-card/60 px-5 py-10 text-center shadow-sm">
+          <p className="font-display text-xl font-semibold text-foreground">Other cities aren&apos;t listed yet</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted">
+            When more metros are in your directory (and not only your home city), they&apos;ll show up
+            here for Passport. Until then, home is where you post and search still works app-wide.
+          </p>
+          <div className="mt-8 flex flex-col gap-3">
+            <Link
+              href="/create"
+              className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-city"
+            >
+              Create a post
+            </Link>
+            <Link
+              href="/search"
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold"
+            >
+              Search people &amp; tags
+            </Link>
+            <Link href="/feed" className="text-sm font-semibold text-accent">
+              ← Home city feed
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          <section className="mb-8 space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Suggested</h2>
+            <div className="grid gap-3">
+              {suggested.map((city) => (
+                <CityCard key={city.id} city={city} />
+              ))}
+            </div>
+          </section>
 
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
-          Nearby cities (pilot)
-        </h2>
-        <p className="text-xs text-muted">
-          V2: geo-ranked neighbors. For launch, we surface the full roster so no city feels empty.
-        </p>
-        <div className="grid gap-3">
-          {nearby.map((city) => (
-            <CityCard key={city.id} city={city} />
-          ))}
-        </div>
-      </section>
+          <section className="space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">All cities</h2>
+            <p className="text-xs text-muted">Full roster — ranked-by-distance comes later.</p>
+            <div className="grid gap-3">
+              {nearby.map((city) => (
+                <CityCard key={`nearby-${city.id}`} city={city} />
+              ))}
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

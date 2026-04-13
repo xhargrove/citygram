@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PostCard } from "@/components/feed/post-card";
+import { HomeFeedList } from "@/components/feed/home-feed-list";
 import { fetchCityFeed } from "@/lib/data/posts";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,7 +14,7 @@ export default async function HomeCityFeedPage() {
     .from("profiles")
     .select("home_city_id, display_name")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!profile?.home_city_id) {
     return (
@@ -62,16 +62,37 @@ export default async function HomeCityFeedPage() {
         </p>
       </header>
 
-      <section className="divide-y divide-border">
+      <section>
         {posts.length === 0 ? (
-          <div className="px-6 py-16 text-center text-sm text-muted">
-            <p>No posts here yet. Be the first voice from {city.name}.</p>
-            <Link href="/create" className="mt-4 inline-block text-accent font-semibold">
-              Create a post
-            </Link>
+          <div className="mx-4 mt-6 rounded-2xl border border-border bg-card/60 px-5 py-10 text-center shadow-sm">
+            <p className="font-display text-xl font-semibold text-foreground">
+              Be the first voice from {city.name}
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              This feed only shows your home city — sparse is normal at the start. One post is enough to
+              give the block something to react to.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <Link
+                href="/create"
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-city"
+              >
+                Create a post
+              </Link>
+              <Link
+                href="/explore"
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold text-foreground"
+              >
+                Browse other cities
+              </Link>
+            </div>
+            <p className="mt-6 text-xs text-muted">
+              Home stays <span className="font-medium text-foreground">{city.name}</span> — Passport is
+              for trips elsewhere.
+            </p>
           </div>
         ) : (
-          posts.map((p) => <PostCard key={p.id} post={p} />)
+          <HomeFeedList initialPosts={posts} />
         )}
       </section>
     </div>

@@ -19,12 +19,12 @@ export default async function PassportCityPage({ params }: Props) {
     .from("profiles")
     .select("home_city_id")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   const city = await fetchCityBySlug(supabase, slug);
   if (!city) notFound();
 
-  const posts = await fetchCityFeed(supabase, city.id, user.id);
+  const posts = await fetchCityFeed(supabase, city.id, user.id, 30);
 
   const { data: homeCity } = profile?.home_city_id
     ? await supabase.from("cities").select("name, slug").eq("id", profile.home_city_id).single()
@@ -54,11 +54,35 @@ export default async function PassportCityPage({ params }: Props) {
 
       <section className="divide-y divide-border">
         {posts.length === 0 ? (
-          <div className="px-6 py-16 text-center text-sm text-muted">
-            No public posts in {city.name} yet.
+          <div className="mx-4 my-6 rounded-2xl border border-border bg-card/60 px-5 py-10 text-center shadow-sm">
+            <p className="font-display text-xl font-semibold text-foreground">
+              Nothing public in {city.name} yet
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              You&apos;re viewing this city in Passport — the feed is empty until someone posts. Start
+              the thread or come back later.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <Link
+                href="/create"
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-foreground shadow-city"
+              >
+                Create a post
+              </Link>
+              <Link
+                href="/explore"
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold"
+              >
+                Browse other cities
+              </Link>
+            </div>
+            <p className="mt-4 text-xs text-muted">
+              In create, choose <span className="font-medium text-foreground">{city.name}</span> so the
+              post lands here.
+            </p>
           </div>
         ) : (
-          posts.map((p) => <PostCard key={p.id} post={p} />)
+          posts.map((p, i) => <PostCard key={p.id} post={p} priorityImage={i === 0} />)
         )}
       </section>
     </div>
