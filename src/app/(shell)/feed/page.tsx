@@ -45,7 +45,7 @@ export default async function HomeCityFeedPage() {
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 px-4 py-4 backdrop-blur safe-pt">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Home city</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Your city</p>
             <h1 className="font-display text-2xl font-semibold">{city.name}</h1>
             <p className="text-sm text-muted">{city.tagline}</p>
           </div>
@@ -57,8 +57,8 @@ export default async function HomeCityFeedPage() {
           </Link>
         </div>
         <p className="mt-3 text-xs text-muted">
-          This feed is scoped to <span className="font-semibold text-foreground">{city.name}</span>{" "}
-          — your default world on CITYGRAM.
+          <span className="font-semibold text-foreground">{city.name}</span> is where you start on CITYGRAM — local
+          first, not a generic timeline.
         </p>
       </header>
 
@@ -69,8 +69,7 @@ export default async function HomeCityFeedPage() {
               Be the first voice from {city.name}
             </p>
             <p className="mt-3 text-sm leading-relaxed text-muted">
-              This feed only shows your home city — sparse is normal at the start. One post is enough to
-              give the block something to react to.
+              Quiet blocks are normal early. One honest post gives your city something to gather around.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Link
@@ -87,8 +86,8 @@ export default async function HomeCityFeedPage() {
               </Link>
             </div>
             <p className="mt-6 text-xs text-muted">
-              Home stays <span className="font-medium text-foreground">{city.name}</span> — Passport is
-              for trips elsewhere.
+              You always post to <span className="font-medium text-foreground">{city.name}</span>. Use Passport to
+              look around other cities anytime.
             </p>
           </div>
         ) : (

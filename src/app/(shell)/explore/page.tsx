@@ -29,10 +29,10 @@ export default async function ExploreCitiesPage() {
     <div className="mx-auto min-h-dvh max-w-lg px-4 pb-24 pt-6 safe-pt">
       <header className="mb-6 space-y-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Explore</p>
-        <h1 className="font-display text-3xl font-semibold">Choose your next city</h1>
+        <h1 className="font-display text-3xl font-semibold">Other cities</h1>
         <p className="text-sm text-muted">
-          Pick a city, open it in Passport, and scroll that place on purpose — separate from your home
-          feed.
+          Tap a place to open it in Passport — look around on purpose. Your home feed stays where you
+          anchored at signup.
         </p>
         <Link
           href="/search"
@@ -54,8 +54,8 @@ export default async function ExploreCitiesPage() {
         <div className="rounded-2xl border border-border bg-card/60 px-5 py-10 text-center shadow-sm">
           <p className="font-display text-xl font-semibold text-foreground">Other cities aren&apos;t listed yet</p>
           <p className="mt-3 text-sm leading-relaxed text-muted">
-            When more metros are in your directory (and not only your home city), they&apos;ll show up
-            here for Passport. Until then, home is where you post and search still works app-wide.
+            When more metros exist beside your home city, they&apos;ll list here. Until then, post at home and search
+            still works everywhere.
           </p>
           <div className="mt-8 flex flex-col gap-3">
             <Link
@@ -78,7 +78,7 @@ export default async function ExploreCitiesPage() {
       ) : (
         <>
           <section className="mb-8 space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Suggested</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Beyond home</h2>
             <div className="grid gap-3">
               {suggested.map((city) => (
                 <CityCard key={city.id} city={city} />
@@ -87,8 +87,8 @@ export default async function ExploreCitiesPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">All cities</h2>
-            <p className="text-xs text-muted">Full roster — ranked-by-distance comes later.</p>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Directory</h2>
+            <p className="text-xs text-muted">Every metro you can open — distance ranking comes later.</p>
             <div className="grid gap-3">
               {nearby.map((city) => (
                 <CityCard key={`nearby-${city.id}`} city={city} />
@@ -113,7 +113,7 @@ function CityCard({ city }: { city: CityRow }) {
           {city.region}, {city.country}
         </p>
       </div>
-      <span className="text-sm font-semibold text-accent">Travel →</span>
+      <span className="text-sm font-semibold text-accent">Visit →</span>
     </Link>
   );
 }

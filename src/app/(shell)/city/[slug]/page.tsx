@@ -49,6 +49,9 @@ export default async function CityPulsePage({ params }: Props) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">City pulse</p>
         <h1 className="mt-2 font-display text-4xl font-semibold">{city.name}</h1>
         <p className="mt-2 max-w-prose text-sm text-muted">{city.tagline}</p>
+        {!isHomeCity && (
+          <p className="mt-2 text-xs font-medium text-accent">Exploring · posts you publish still go to your home city</p>
+        )}
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             href={`/passport/${city.slug}`}
@@ -94,7 +97,7 @@ export default async function CityPulsePage({ params }: Props) {
               </div>
               {!isHomeCity && (
                 <p className="mt-3 text-xs text-muted">
-                  You can explore {city.name} here; publishing always goes to your home city.
+                  Look around {city.name} here — your voice stays tied to home.
                 </p>
               )}
             </div>

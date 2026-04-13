@@ -33,6 +33,7 @@ export default async function CreatePostPage() {
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">New post</p>
           <p className="font-display text-lg font-semibold">Create</p>
+          <p className="text-xs text-muted">For your home city</p>
         </div>
       </header>
       <CreatePostForm

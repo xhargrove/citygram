@@ -41,18 +41,18 @@ export default async function PassportCityPage({ params }: Props) {
             <h1 className="font-display text-2xl font-semibold">{city.name}</h1>
             <p className="text-xs text-muted">
               {isHomeCity
-                ? "Your home city in Passport — same place as your default feed, different chrome."
-                : "You&apos;re visiting another city ecosystem."}
+                ? "Your home city in Passport — same ground as your feed, Passport chrome."
+                : "Browsing this city — your posts still publish to home."}
             </p>
           </div>
           <Link href="/feed" className="text-xs font-semibold text-muted">
             Home feed
           </Link>
         </div>
-        {home && (
+        {home && !isHomeCity && (
           <p className="mt-3 rounded-2xl bg-accent/10 px-3 py-2 text-xs text-foreground">
-            Home base still set to <span className="font-semibold">{home.name}</span> — this view does
-            not replace your default feed.
+            Your anchor is <span className="font-semibold">{home.name}</span> — this Passport is a window, not a new
+            home feed.
           </p>
         )}
       </header>
@@ -87,14 +87,16 @@ export default async function PassportCityPage({ params }: Props) {
             ) : (
               <>
                 <p className="mt-3 text-sm leading-relaxed text-muted">
-                  Passport is for watching <span className="font-medium text-foreground">{city.name}</span>. New
-                  posts always publish to your home city
+                  You&apos;re looking at <span className="font-medium text-foreground">{city.name}</span>. New posts
+                  always land in
                   {home ? (
                     <>
                       {" "}
-                      (<span className="font-medium text-foreground">{home.name}</span>)
+                      <span className="font-medium text-foreground">{home.name}</span>
                     </>
-                  ) : null}
+                  ) : (
+                    " your home city"
+                  )}
                   .
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">

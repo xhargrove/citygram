@@ -56,8 +56,8 @@ export function OnboardingForm({ cities, interests }: Props) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Onboarding</p>
         <h1 className="font-display text-3xl font-semibold">Anchor yourself</h1>
         <p className="text-sm text-muted">
-          Choose your home city — this becomes your default feed and where you publish. Browse other
-          metros later with Passport Mode.
+          Pick where you belong — your feed and your posts live here. Other metros are for looking around in Passport,
+          not a second home feed.
         </p>
       </header>
 

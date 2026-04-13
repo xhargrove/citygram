@@ -248,20 +248,19 @@ export function CreatePostForm({ homeCityId, homeCityName, defaultNeighborhoodId
         <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Create</p>
         <h1 className="font-display text-2xl font-semibold">Share a moment</h1>
         <p className="text-sm text-muted">
-          Media uploads from your device directly to Supabase Storage, then the post is saved. Posts always publish to
-          your home city. Caption and hashtag caps follow common Instagram-style norms; total upload size is lower here
-          (web-friendly).
+          Upload straight to storage, then publish. This goes to the city you call home — the same place as your feed.
+          Captions and tags follow sensible limits; uploads stay web-friendly in size.
         </p>
       </header>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Posting to</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Your post belongs to</p>
         <div
           className="flex min-h-12 items-center rounded-xl border border-border bg-card/80 px-4 text-sm font-medium text-foreground"
           aria-readonly
         >
           {homeCityName}
-          <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-muted">Home city</span>
+          <span className="ml-auto text-[11px] font-semibold uppercase tracking-wide text-muted">Home</span>
         </div>
       </div>
 
