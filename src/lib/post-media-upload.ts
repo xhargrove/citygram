@@ -4,12 +4,25 @@ import type { FinalizeMediaItem } from "@/types/post-create";
 function safeExt(file: File): string {
   const fromName = file.name.split(".").pop()?.toLowerCase() ?? "";
   if (/^[a-z0-9]{1,10}$/i.test(fromName)) return fromName;
+  if (
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    file.type === "image/heif-sequence"
+  ) {
+    return "heic";
+  }
   if (file.type.startsWith("video/")) return "mp4";
   return "jpg";
 }
 
 function mediaTypeForFile(file: File): "image" | "video" {
-  return file.type.startsWith("video") ? "video" : "image";
+  return file.type.startsWith("video/") ? "video" : "image";
+}
+
+function contentTypeForUpload(file: File, ext: string): string | undefined {
+  if (file.type) return file.type;
+  if (ext === "heic" || ext === "heif") return "image/heic";
+  return undefined;
 }
 
 /**
@@ -32,7 +45,7 @@ export async function uploadDraftMediaToStorage(
     const path = `${userId}/draft/${draftId}/${i}.${ext}`;
     const upload = await bucket.upload(path, file, {
       upsert: false,
-      contentType: file.type || undefined,
+      contentType: contentTypeForUpload(file, ext),
     });
     if (upload.error) {
       if (paths.length > 0) {

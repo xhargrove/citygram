@@ -19,7 +19,8 @@ type Props = {
 
 type Phase = "idle" | "uploading" | "finalizing";
 
-const ACCEPT = "image/*,video/*";
+/** Include MIME + extensions so OS pickers offer iPhone/macOS HEIC/HEIF (not only generic image/*). */
+const ACCEPT = "image/*,image/heic,image/heif,video/*,.heic,.heif";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
