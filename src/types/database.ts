@@ -31,6 +31,8 @@ export type ProfileRow = {
   id: string;
   username: string;
   display_name: string;
+  first_name: string | null;
+  last_name: string | null;
   bio: string | null;
   avatar_url: string | null;
   home_city_id: string | null;
@@ -73,7 +75,9 @@ export type PostMediaRow = {
 
 export type PostWithAuthor = PostRow & {
   author: Pick<ProfileRow, "id" | "username" | "display_name" | "avatar_url">;
-  city: Pick<CityRow, "id" | "slug" | "name">;
+  city: Pick<CityRow, "id" | "slug" | "name" | "region">;
+  /** Present when the author tagged a neighborhood on publish; null otherwise. */
+  neighborhood: Pick<NeighborhoodRow, "id" | "name"> | null;
   media: PostMediaRow[];
   liked_by_me?: boolean;
   saved_by_me?: boolean;

@@ -72,10 +72,16 @@ export function OnboardingForm({ cities, interests }: Props) {
       </section>
 
       <section className="space-y-3">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted">Username</label>
-        <Input name="username" placeholder="alex_rivera" required minLength={3} pattern="^[a-zA-Z0-9_]+$" autoComplete="username" />
+        <label className="text-xs font-semibold uppercase tracking-wide text-muted">Site name</label>
+        <Input
+          name="display_name"
+          placeholder="How you appear on Citygram"
+          required
+          maxLength={80}
+          autoComplete="nickname"
+        />
         <p className="text-xs text-muted">
-          Letters, numbers, and underscores only. Your public @handle — how people find and mention you.
+          Your public name on posts and your profile. Your @handle is set from your first and last name above.
         </p>
       </section>
 

@@ -5,6 +5,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Builds a profile username (letters, digits, underscore; max 30) from first and last name.
+ * Used so the @handle reflects the member's name; collisions are resolved in onboarding.
+ */
+export function usernameSlugFromNames(first: string, last: string): string {
+  const sanitize = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "");
+
+  const a = sanitize(first);
+  const b = sanitize(last);
+  let combined = [a, b].filter(Boolean).join("_");
+  if (combined.length < 3) {
+    combined = "member";
+  }
+  return combined.slice(0, 30);
+}
+
 export function parseHashtags(text: string): string[] {
   const matches = text.match(/#[\p{L}\p{N}_]+/gu);
   if (!matches) return [];
@@ -37,10 +60,28 @@ export function formatRelativeTime(iso: string): string {
   const sec = Math.round((Date.now() - t) / 1000);
   if (sec < 45) return "Just now";
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m`;
+  if (min < 60) return `${min}m ago`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h`;
+  if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
-  if (day < 7) return `${day}d`;
+  if (day < 7) return `${day}d ago`;
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
+
+/** Full local date/time for tooltips and screen-reader context. */
+export function formatFullTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+/** City line for post metadata, e.g. "Atlanta, Georgia" when `region` exists in DB. */
+export function formatCityWithRegion(city: { name: string; region: string | null }): string {
+  const r = city.region?.trim();
+  if (r) return `${city.name}, ${r}`;
+  return city.name;
+}
+

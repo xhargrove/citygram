@@ -12,25 +12,29 @@ const FEED_ASPECT_STORAGE_KEY = "citygram-feed-media-aspect";
 const ASPECT_OPTIONS: { value: FeedMediaAspect; label: string; hint: string }[] = [
   { value: "square", label: "1:1", hint: "Square" },
   { value: "portrait", label: "4:5", hint: "Portrait" },
+  { value: "tall", label: "9:16", hint: "Tall" },
   { value: "wide", label: "16:9", hint: "Wide" },
 ];
 
 type Props = {
   initialPosts: PostWithAuthor[];
+  /** Shown above the feed so it’s clear posts are from other people in this city. */
+  cityName?: string;
+  showLoadMore?: boolean;
 };
 
 function readStoredAspect(): FeedMediaAspect | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(FEED_ASPECT_STORAGE_KEY);
-    if (raw === "square" || raw === "portrait" || raw === "wide") return raw;
+    if (raw === "square" || raw === "portrait" || raw === "tall" || raw === "wide") return raw;
   } catch {
     /* ignore */
   }
   return null;
 }
 
-export function HomeFeedList({ initialPosts }: Props) {
+export function HomeFeedList({ initialPosts, cityName, showLoadMore = true }: Props) {
   const [posts, setPosts] = useState(initialPosts);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(initialPosts.length < CITY_FEED_PAGE_SIZE);
@@ -67,6 +71,13 @@ export function HomeFeedList({ initialPosts }: Props) {
 
   return (
     <>
+      {cityName ? (
+        <p className="border-b border-border/50 bg-background/80 px-4 py-2.5 text-[13px] leading-snug text-muted backdrop-blur-sm">
+          <span className="font-semibold text-foreground">From neighbors in {cityName}</span>
+          {" — "}
+          newest first. Everyone here chose this city as home; not a worldwide timeline.
+        </p>
+      ) : null}
       <div className="border-b border-border/50 bg-gradient-to-r from-accent/8 via-background/95 to-accent/5 px-4 py-3 backdrop-blur-sm">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
@@ -105,7 +116,7 @@ export function HomeFeedList({ initialPosts }: Props) {
         ))}
       </div>
 
-      {!done && (
+      {showLoadMore && !done && (
         <div className="flex flex-col items-center gap-3 px-4 py-8">
           {loadMoreError && (
             <p

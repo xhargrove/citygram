@@ -10,7 +10,9 @@
   --border: rgba(15, 23, 42, 0.08);
   --accent: #0d9488;
   --accent-foreground: #f0fdfa;
+  --accent-muted: rgba(13, 148, 136, 0.12);
   --city-glow: rgba(13, 148, 136, 0.15);
+  --city-grid: rgba(13, 148, 136, 0.04);
 }
 
 .dark {
@@ -21,18 +23,72 @@
   --border: rgba(241, 245, 249, 0.08);
   --accent: #2dd4bf;
   --accent-foreground: #042f2e;
+  --accent-muted: rgba(45, 212, 191, 0.1);
   --city-glow: rgba(45, 212, 191, 0.12);
+  --city-grid: rgba(45, 212, 191, 0.035);
 }
 
 html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   color: var(--foreground);
-  background: var(--background);
   min-height: 100dvh;
   -webkit-tap-highlight-color: transparent;
+}
+
+/** Layered “city light” wash + faint grid — keeps the app from feeling flat */
+.citygram-body {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 110% 70% at 50% -35%, var(--city-glow), transparent 58%),
+    radial-gradient(ellipse 55% 45% at 100% 8%, rgba(13, 148, 136, 0.09), transparent 52%),
+    radial-gradient(ellipse 45% 35% at 0% 85%, rgba(13, 148, 136, 0.05), transparent 50%),
+    linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--background) 92%, transparent) 0%,
+        var(--background) 38%,
+        var(--background) 100%
+      ),
+    linear-gradient(var(--city-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--city-grid) 1px, transparent 1px);
+  background-size:
+    auto,
+    auto,
+    auto,
+    auto,
+    28px 28px,
+    28px 28px;
+  background-position: center top, center, center, center, -1px -1px, -1px -1px;
+}
+
+.dark .citygram-body {
+  background-image:
+    radial-gradient(ellipse 110% 65% at 50% -32%, var(--city-glow), transparent 55%),
+    radial-gradient(ellipse 50% 42% at 100% 5%, rgba(45, 212, 191, 0.07), transparent 48%),
+    radial-gradient(ellipse 40% 32% at 5% 90%, rgba(45, 212, 191, 0.05), transparent 48%),
+    linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--background) 94%, transparent) 0%,
+        var(--background) 42%,
+        var(--background) 100%
+      ),
+    linear-gradient(var(--city-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--city-grid) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, 32px 32px, 32px 32px;
+  background-position: center top, center, center, center, -1px -1px, -1px -1px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  color: var(--foreground);
 }
 
 /* Safe areas for notched phones — consumed by layout padding */
@@ -47,4 +103,78 @@ body {
 .feed-scroll {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+}
+
+@layer utilities {
+  /** Accent headline gradient — use sparingly on key titles */
+  .citygram-gradient-text {
+    background: linear-gradient(120deg, var(--foreground) 0%, var(--foreground) 42%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .dark .citygram-gradient-text {
+    background: linear-gradient(120deg, var(--foreground) 0%, var(--foreground) 38%, var(--accent) 105%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /** Soft lift on interactive marketing / shell cards */
+  .citygram-lift {
+    @apply transition-[transform,box-shadow] duration-300 ease-out motion-reduce:transition-none;
+  }
+
+  .citygram-lift:hover {
+    @apply -translate-y-0.5 shadow-city motion-reduce:translate-y-0;
+  }
+}
+
+@keyframes citygram-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes citygram-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-citygram-fade-up {
+  animation: citygram-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-citygram-shimmer {
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    color-mix(in srgb, var(--foreground) 6%, transparent) 45%,
+    color-mix(in srgb, var(--foreground) 10%, transparent) 50%,
+    color-mix(in srgb, var(--foreground) 6%, transparent) 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: citygram-shimmer 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-citygram-fade-up,
+  .animate-citygram-shimmer {
+    animation: none !important;
+  }
+
+  .animate-city-pulse {
+    animation: none !important;
+  }
 }

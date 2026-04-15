@@ -1,5 +1,14 @@
 import Link from "next/link";
+import { CityPulseCard } from "@/components/feed/city-pulse-card";
+import { ElsewhereOnCitygram } from "@/components/feed/elsewhere-on-citygram";
+import { FeedActivityStrip } from "@/components/feed/feed-activity-strip";
 import { HomeFeedList } from "@/components/feed/home-feed-list";
+import { RecentVoices } from "@/components/feed/recent-voices";
+import {
+  fetchCityPulseStats,
+  fetchElsewhereActivity,
+  fetchRecentVoicesInCity,
+} from "@/lib/data/feed-activity";
 import { fetchCityFeed } from "@/lib/data/posts";
 import { createClient } from "@/lib/supabase/server";
 
@@ -38,39 +47,77 @@ export default async function HomeCityFeedPage() {
     );
   }
 
-  const posts = await fetchCityFeed(supabase, profile.home_city_id, user.id);
+  const [posts, pulse, recentVoices, elsewhere] = await Promise.all([
+    fetchCityFeed(supabase, profile.home_city_id, user.id),
+    fetchCityPulseStats(supabase, profile.home_city_id),
+    fetchRecentVoicesInCity(supabase, profile.home_city_id),
+    fetchElsewhereActivity(supabase, profile.home_city_id),
+  ]);
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg pb-4">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/90 px-4 py-4 backdrop-blur safe-pt">
+      <header className="sticky top-0 z-20 border-b border-border/50 bg-background/70 px-4 py-4 shadow-[0_1px_0_rgba(15,23,42,0.05)] backdrop-blur-xl backdrop-saturate-150 safe-pt dark:shadow-[0_1px_0_rgba(255,255,255,0.06)]">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted">Your city</p>
-            <h1 className="font-display text-2xl font-semibold">{city.name}</h1>
-            <p className="text-sm text-muted">{city.tagline}</p>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted">Your city</p>
+            <h1 className="citygram-gradient-text font-display text-2xl font-semibold tracking-tight md:text-[1.75rem]">
+              {city.name}
+            </h1>
+            {city.tagline && (
+              <p className="mt-0.5 text-sm text-muted">{city.tagline}</p>
+            )}
           </div>
           <Link
             href="/passport"
-            className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-accent hover:bg-accent/10"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent shadow-sm transition hover:border-accent/45 hover:bg-accent/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
+            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 opacity-90" aria-hidden>
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+              <path
+                d="M12 7v3.5l2 2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
             Passport
           </Link>
         </div>
-        <p className="mt-3 text-xs text-muted">
+        <p className="mt-3 border-l-2 border-accent/35 pl-3 text-xs leading-relaxed text-muted">
           <span className="font-semibold text-foreground">{city.name}</span> is where you start on CITYGRAM — local
           first, not a generic timeline.
         </p>
       </header>
 
+      <section className="space-y-4 px-4 pt-4">
+        <FeedActivityStrip
+          cityName={city.name}
+          postsTodayUtc={pulse.postsTodayUtc}
+          distinctPostersTodayUtc={pulse.distinctPostersTodayUtc}
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CityPulseCard cityName={city.name} stats={pulse} />
+          <RecentVoices cityName={city.name} voices={recentVoices} />
+        </div>
+        <ElsewhereOnCitygram cities={elsewhere} />
+      </section>
+
       <section>
         {posts.length === 0 ? (
-          <div className="mx-4 mt-6 rounded-2xl border border-border bg-card/60 px-5 py-10 text-center shadow-sm">
+          <div className="citygram-lift mx-4 mt-6 rounded-2xl border border-border/60 bg-gradient-to-b from-card/90 to-card/50 px-5 py-10 text-center shadow-city dark:from-card/50 dark:to-card/30">
             <p className="font-display text-xl font-semibold text-foreground">
-              Be the first voice from {city.name}
+              Be one of the first voices in {city.name}
             </p>
             <p className="mt-3 text-sm leading-relaxed text-muted">
-              Quiet blocks are normal early. One honest post gives your city something to gather around.
+              Your city is getting started — there aren&apos;t posts in the feed yet. One honest photo or video gives
+              neighbors something to gather around.
             </p>
+            {elsewhere.length > 0 && (
+              <p className="mt-4 text-xs leading-relaxed text-muted">
+                Other cities on CITYGRAM already have public activity — explore anytime, then come back home to post.
+              </p>
+            )}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Link
                 href="/create"
@@ -82,16 +129,16 @@ export default async function HomeCityFeedPage() {
                 href="/explore"
                 className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background px-6 text-sm font-semibold text-foreground"
               >
-                Browse other cities
+                Explore active cities
               </Link>
             </div>
             <p className="mt-6 text-xs text-muted">
               You always post to <span className="font-medium text-foreground">{city.name}</span>. Use Passport to
-              look around other cities anytime.
+              browse other cities without changing where you publish.
             </p>
           </div>
         ) : (
-          <HomeFeedList initialPosts={posts} />
+          <HomeFeedList initialPosts={posts} cityName={city.name} />
         )}
       </section>
     </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PostCard } from "@/components/feed/post-card";
+import { HomeFeedList } from "@/components/feed/home-feed-list";
 import { fetchCityBySlug } from "@/lib/data/city-page";
 import { fetchCityFeed } from "@/lib/data/posts";
 import { createClient } from "@/lib/supabase/server";
@@ -117,7 +117,7 @@ export default async function PassportCityPage({ params }: Props) {
             )}
           </div>
         ) : (
-          posts.map((p, i) => <PostCard key={p.id} post={p} priorityImage={i === 0} />)
+          <HomeFeedList initialPosts={posts} showLoadMore={false} />
         )}
       </section>
     </div>

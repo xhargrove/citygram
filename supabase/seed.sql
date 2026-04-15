@@ -32,7 +32,10 @@ VALUES
   ('a000001c-0000-4000-8000-00000000001c', 'salt-lake-city', 'Salt Lake City', 'Utah', 'US', 'Wasatch views, grid streets, outdoor cathedral.'),
   ('a000001d-0000-4000-8000-00000000001d', 'new-orleans', 'New Orleans', 'Louisiana', 'US', 'Brass bands, bayou soul, laissez les bons temps rouler.'),
   ('a000001e-0000-4000-8000-00000000001e', 'st-louis', 'St. Louis', 'Missouri', 'US', 'Gateway arch views, brick neighborhoods, Midwest soul with river-town edge.'),
-  ('a000001f-0000-4000-8000-00000000001f', 'jackson-ms', 'Jackson', 'Mississippi', 'US', 'Capital city blues, soul food, and Deep South neighborhood pride.')
+  ('a000001f-0000-4000-8000-00000000001f', 'jackson-ms', 'Jackson', 'Mississippi', 'US', 'Capital city blues, soul food, and Deep South neighborhood pride.'),
+  ('a0000020-0000-4000-8000-000000000020', 'charleston', 'Charleston', 'South Carolina', 'US', 'Lowcountry light, historic blocks, and coastal neighborhood life.'),
+  ('a0000021-0000-4000-8000-000000000021', 'wichita', 'Wichita', 'Kansas', 'US', 'Prairie skies, maker energy, and neighborhood pride in the Air Capital.'),
+  ('a0000022-0000-4000-8000-000000000022', 'macon', 'Macon', 'Georgia', 'US', 'Cherry Blossom streets, soul roots, and central Georgia neighborhood pride.')
 ON CONFLICT (slug) DO NOTHING;
 
 -- Neighborhoods & nearby areas (expand freely; ON CONFLICT keeps re-runs safe)
@@ -498,7 +501,40 @@ VALUES
   ('a000001f-0000-4000-8000-00000000001f', 'south-jackson', 'South Jackson'),
   ('a000001f-0000-4000-8000-00000000001f', 'west-jackson', 'West Jackson / Clinton corridor'),
   ('a000001f-0000-4000-8000-00000000001f', 'byram-terry', 'Byram / Terry'),
-  ('a000001f-0000-4000-8000-00000000001f', 'old-canton-road', 'Old Canton Road corridor')
+  ('a000001f-0000-4000-8000-00000000001f', 'old-canton-road', 'Old Canton Road corridor'),
+
+  -- Charleston, SC
+  ('a0000020-0000-4000-8000-000000000020', 'downtown-charleston', 'Downtown / Historic District'),
+  ('a0000020-0000-4000-8000-000000000020', 'north-charleston', 'North Charleston'),
+  ('a0000020-0000-4000-8000-000000000020', 'west-ashley', 'West Ashley'),
+  ('a0000020-0000-4000-8000-000000000020', 'mount-pleasant', 'Mount Pleasant'),
+  ('a0000020-0000-4000-8000-000000000020', 'james-island', 'James Island / Folly Beach corridor'),
+  ('a0000020-0000-4000-8000-000000000020', 'johns-island', 'Johns Island / Kiawah corridor'),
+  ('a0000020-0000-4000-8000-000000000020', 'daniel-island', 'Daniel Island'),
+  ('a0000020-0000-4000-8000-000000000020', 'summerville', 'Summerville'),
+  ('a0000020-0000-4000-8000-000000000020', 'goose-creek', 'Goose Creek / Hanahan'),
+  ('a0000020-0000-4000-8000-000000000020', 'park-circle', 'Park Circle'),
+
+  -- Wichita, KS
+  ('a0000021-0000-4000-8000-000000000021', 'downtown-wichita', 'Downtown / Old Town'),
+  ('a0000021-0000-4000-8000-000000000021', 'delano', 'Delano District'),
+  ('a0000021-0000-4000-8000-000000000021', 'college-hill', 'College Hill'),
+  ('a0000021-0000-4000-8000-000000000021', 'riverside-wichita', 'Riverside'),
+  ('a0000021-0000-4000-8000-000000000021', 'eastborough', 'Eastborough / East Side'),
+  ('a0000021-0000-4000-8000-000000000021', 'west-side-wichita', 'West Side'),
+  ('a0000021-0000-4000-8000-000000000021', 'northwest-wichita', 'Northwest / Maize corridor'),
+  ('a0000021-0000-4000-8000-000000000021', 'southeast-wichita', 'Southeast / Derby corridor'),
+  ('a0000021-0000-4000-8000-000000000021', 'andover', 'Andover'),
+  ('a0000021-0000-4000-8000-000000000021', 'goddard', 'Goddard / West metro'),
+
+  -- Macon, GA
+  ('a0000022-0000-4000-8000-000000000022', 'downtown-macon', 'Downtown / College Hill'),
+  ('a0000022-0000-4000-8000-000000000022', 'ingleside', 'Ingleside / Vineville'),
+  ('a0000022-0000-4000-8000-000000000022', 'north-macon', 'North Macon'),
+  ('a0000022-0000-4000-8000-000000000022', 'east-macon', 'East Macon'),
+  ('a0000022-0000-4000-8000-000000000022', 'west-macon', 'West Macon'),
+  ('a0000022-0000-4000-8000-000000000022', 'south-macon', 'South Macon'),
+  ('a0000022-0000-4000-8000-000000000022', 'warner-robins-corridor', 'Warner Robins corridor')
 ON CONFLICT (city_id, slug) DO NOTHING;
 
 -- Interests

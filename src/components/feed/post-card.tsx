@@ -8,11 +8,11 @@ import { reportPost } from "@/actions/report";
 import { Avatar } from "@/components/media/avatar";
 import { SupabaseFillImage } from "@/components/media/supabase-fill-image";
 import { storagePublicUrl } from "@/lib/media";
-import { cn, formatRelativeTime } from "@/lib/utils";
+import { cn, formatCityWithRegion, formatFullTimestamp, formatRelativeTime } from "@/lib/utils";
 import type { PostMediaRow, PostWithAuthor } from "@/types/database";
 
 /** When set (e.g. home feed), locks the media frame to one aspect for all breakpoints. */
-export type FeedMediaAspect = "square" | "portrait" | "wide";
+export type FeedMediaAspect = "square" | "portrait" | "tall" | "wide";
 
 type Props = {
   post: PostWithAuthor;
@@ -31,6 +31,7 @@ type OptimisticPost = {
 const FEED_ASPECT_CLASS: Record<FeedMediaAspect, string> = {
   square: "aspect-square",
   portrait: "aspect-[4/5]",
+  tall: "aspect-[9/16]",
   wide: "aspect-video",
 };
 
@@ -240,18 +241,31 @@ export function PostCard({ post, priorityImage = false, mediaAspect }: Props) {
     await reportPost(post.id, reason);
   }
 
+  const relativePosted = formatRelativeTime(post.created_at);
+  const timeCompact = relativePosted === "Just now" ? "Just now" : relativePosted;
+
   return (
-    <article className="border-b border-border bg-card/40">
+    <article className="group/card border-b border-border/70 bg-card/35 backdrop-blur-[2px] transition-[background-color,box-shadow] duration-300 hover:bg-card/55 dark:bg-card/25 dark:hover:bg-card/40">
       <header className="flex items-center gap-3 px-4 py-3">
         <Link href={`/u/${post.author.username}`} className="flex min-h-[44px] flex-1 items-center gap-3">
           <Avatar src={post.author.avatar_url} alt={post.author.display_name} />
           <div className="min-w-0 text-left">
             <p className="truncate text-sm font-semibold">{post.author.display_name}</p>
-            <p className="truncate text-xs text-muted">
-              @{post.author.username} · {post.city.name}
-              <span className="text-muted/80"> · {formatRelativeTime(post.created_at)}</span>
+            <p className="truncate text-xs text-muted">@{post.author.username}</p>
+            <p className="mt-1 text-[11px] leading-snug text-muted">
+              <span className="font-medium text-foreground/90">{formatCityWithRegion(post.city)}</span>
+              {post.neighborhood ? (
+                <>
+                  <span className="text-muted"> · </span>
+                  <span className="font-medium text-foreground/90">{post.neighborhood.name}</span>
+                </>
+              ) : null}
+              <span className="text-muted"> · </span>
+              <time dateTime={post.created_at} title={formatFullTimestamp(post.created_at)} className="text-muted">
+                {timeCompact}
+              </time>
               {post.is_sponsored_placeholder && (
-                <span className="ml-2 rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                <span className="ml-2 inline-block rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] uppercase tracking-wide">
                   Local spotlight
                 </span>
               )}
