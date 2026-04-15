@@ -62,14 +62,21 @@ export function OnboardingForm({ cities, interests }: Props) {
       </header>
 
       <section className="space-y-3">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted">Handle</label>
-        <Input name="username" placeholder="your_name" required minLength={3} pattern="^[a-zA-Z0-9_]+$" />
-        <p className="text-xs text-muted">Letters, numbers, and underscores. This is how people find you.</p>
+        <label className="text-xs font-semibold uppercase tracking-wide text-muted">First name</label>
+        <Input name="first_name" placeholder="Alex" required autoComplete="given-name" maxLength={60} />
       </section>
 
       <section className="space-y-3">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted">Display name</label>
-        <Input name="display_name" placeholder="How you appear" required />
+        <label className="text-xs font-semibold uppercase tracking-wide text-muted">Last name</label>
+        <Input name="last_name" placeholder="Rivera" required autoComplete="family-name" maxLength={60} />
+      </section>
+
+      <section className="space-y-3">
+        <label className="text-xs font-semibold uppercase tracking-wide text-muted">Username</label>
+        <Input name="username" placeholder="alex_rivera" required minLength={3} pattern="^[a-zA-Z0-9_]+$" autoComplete="username" />
+        <p className="text-xs text-muted">
+          Letters, numbers, and underscores only. Your public @handle — how people find and mention you.
+        </p>
       </section>
 
       <section className="space-y-3">
