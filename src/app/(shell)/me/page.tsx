@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { createClient } from "@/lib/supabase/server";
 
 // /me is a convenience alias — always resolves to the signed-in user's
@@ -6,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function MePage() {
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
 
   const {
     data: { user },

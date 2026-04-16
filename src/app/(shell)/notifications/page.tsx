@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { markNotificationsRead } from "@/actions/notifications";
 import { Avatar } from "@/components/media/avatar";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 
 export default async function NotificationsPage() {
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

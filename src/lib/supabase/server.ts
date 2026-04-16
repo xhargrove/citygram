@@ -1,15 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { getNormalizedSupabasePublicEnv } from "@/lib/supabase/public-env";
 
-export async function createClient() {
+/**
+ * Server Supabase client. Returns `null` when public env is missing or invalid — **does not throw**
+ * (throwing here took down entire RSC trees in production with only a digest in the browser).
+ */
+export async function createClient(): Promise<SupabaseClient | null> {
   const cookieStore = await cookies();
   const env = getNormalizedSupabasePublicEnv();
   if (!env) {
-    throw new Error(
-      "Missing or invalid NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY " +
-        "(URL must be a full https address, e.g. https://xxxx.supabase.co)"
+    console.error(
+      "[citygram] createClient: missing or invalid NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY " +
+        "(URL must be https, e.g. https://xxxx.supabase.co)"
     );
+    return null;
   }
   const { url, key } = env;
 

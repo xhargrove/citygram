@@ -5,10 +5,13 @@ import { Avatar } from "@/components/media/avatar";
 import { ProfileAvatarUpload } from "@/components/profile/profile-avatar-upload";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

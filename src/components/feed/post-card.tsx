@@ -261,7 +261,12 @@ export function PostCard({ post, priorityImage = false, mediaAspect }: Props) {
                 </>
               ) : null}
               <span className="text-muted"> · </span>
-              <time dateTime={post.created_at} title={formatFullTimestamp(post.created_at)} className="text-muted">
+              <time
+                dateTime={post.created_at}
+                title={formatFullTimestamp(post.created_at)}
+                className="text-muted"
+                suppressHydrationWarning
+              >
                 {timeCompact}
               </time>
               {post.is_sponsored_placeholder && (
@@ -355,17 +360,19 @@ export function PostCard({ post, priorityImage = false, mediaAspect }: Props) {
             {post.caption}
           </p>
         )}
-        <div className="flex flex-wrap gap-2">
-          {post.hashtags.map((tag) => (
-            <Link
-              key={tag}
-              href={`/search?q=${encodeURIComponent("#" + tag)}`}
-              className="text-xs font-medium text-accent"
-            >
-              #{tag}
-            </Link>
-          ))}
-        </div>
+        {(post.hashtags?.length ?? 0) > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {(post.hashtags ?? []).map((tag) => (
+              <Link
+                key={tag}
+                href={`/search?q=${encodeURIComponent("#" + tag)}`}
+                className="text-xs font-medium text-accent"
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        ) : null}
         {post.tagged_profiles && post.tagged_profiles.length > 0 && (
           <p className="text-xs text-muted">
             With{" "}

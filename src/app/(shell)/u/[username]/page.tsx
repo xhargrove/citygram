@@ -13,6 +13,7 @@ import {
   fetchTaggedPosts,
   isFollowing,
 } from "@/lib/data/profile";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = {
@@ -25,6 +26,8 @@ export default async function UserProfilePage({ params, searchParams }: Props) {
   const { tab } = await searchParams;
 
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -16,6 +16,13 @@ export type CityPulseStats = {
   neighborhoodsActiveTodayUtc: number;
 };
 
+/** Safe defaults when pulse queries fail (network/RLS); keeps the feed shell rendering. */
+export const EMPTY_CITY_PULSE_STATS: CityPulseStats = {
+  postsTodayUtc: 0,
+  distinctPostersTodayUtc: 0,
+  neighborhoodsActiveTodayUtc: 0,
+};
+
 /**
  * Aggregates for the home-city pulse card. All “today” values use the UTC calendar day
  * (same boundary as the database `timestamptz` comparisons below).
@@ -179,7 +186,7 @@ export async function fetchElsewhereActivity(
   return ids
     .map((cityId, i) => {
       const c = cityMap.get(cityId);
-      const postsLast24h = exactCounts[i].count ?? 0;
+      const postsLast24h = exactCounts[i]?.count ?? 0;
       if (!c || postsLast24h === 0) return null;
       return {
         cityId: c.id,

@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { createClient } from "@/lib/supabase/server";
 import type { CityRow, InterestRow } from "@/types/database";
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

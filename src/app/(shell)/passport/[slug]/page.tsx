@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HomeFeedList } from "@/components/feed/home-feed-list";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { fetchCityBySlug } from "@/lib/data/city-page";
 import { fetchCityFeed } from "@/lib/data/posts";
+import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -10,6 +12,8 @@ type Props = { params: Promise<{ slug: string }> };
 export default async function PassportCityPage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -24,7 +28,14 @@ export default async function PassportCityPage({ params }: Props) {
   const city = await fetchCityBySlug(supabase, slug);
   if (!city) notFound();
 
-  const posts = await fetchCityFeed(supabase, city.id, user.id, 30);
+  let posts: Awaited<ReturnType<typeof fetchCityFeed>> = [];
+  let feedQueryFailed = false;
+  try {
+    posts = await fetchCityFeed(supabase, city.id, user.id, 30);
+  } catch (err) {
+    feedQueryFailed = true;
+    logServerError("passport.fetchCityFeed", { cityId: city.id, userId: user.id, slug }, err);
+  }
 
   const { data: homeCity } = profile?.home_city_id
     ? await supabase.from("cities").select("name, slug").eq("id", profile.home_city_id).single()
@@ -56,6 +67,12 @@ export default async function PassportCityPage({ params }: Props) {
           </p>
         )}
       </header>
+
+      {feedQueryFailed ? (
+        <p className="mx-4 mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-950 dark:text-amber-100">
+          Posts couldn&apos;t load. Refresh or try again shortly.
+        </p>
+      ) : null}
 
       <section className="divide-y divide-border">
         {posts.length === 0 ? (

@@ -14,6 +14,8 @@ function isValidAvatarPathForUser(userId: string, storagePath: string): boolean 
 
 export async function updateProfileAvatar(storagePath: string): Promise<ProfileAvatarState> {
   const supabase = await createClient();
+  if (!supabase) return { error: "Server configuration error" };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -59,6 +61,8 @@ export async function updateProfileAvatar(storagePath: string): Promise<ProfileA
 
 export async function clearProfileAvatar(): Promise<ProfileAvatarState> {
   const supabase = await createClient();
+  if (!supabase) return { error: "Server configuration error" };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

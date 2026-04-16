@@ -53,6 +53,10 @@ export async function completeOnboarding(
   formData: FormData
 ): Promise<OnboardingState> {
   const supabase = await createClient();
+  if (!supabase) {
+    return { error: "Server configuration error. Contact support if this persists." };
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

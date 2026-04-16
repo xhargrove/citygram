@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { CitygramLogo } from "@/components/brand/citygram-logo";
+import { useUnreadNotificationsCount } from "@/hooks/use-unread-notifications-count";
 import { cn } from "@/lib/utils";
 
 // ─── Route helpers ────────────────────────────────────────────────────────────
@@ -207,8 +208,17 @@ function Wordmark() {
   );
 }
 
-function SidebarItem({ item, pathname }: { item: NavItem; pathname: string }) {
+function SidebarItem({
+  item,
+  pathname,
+  unreadAlertsCount = 0,
+}: {
+  item: NavItem;
+  pathname: string;
+  unreadAlertsCount?: number;
+}) {
   const active = isActive(item, pathname);
+  const showAlertsBadge = item.href === "/notifications" && unreadAlertsCount > 0;
 
   if (item.isCreate) {
     return (
@@ -228,10 +238,12 @@ function SidebarItem({ item, pathname }: { item: NavItem; pathname: string }) {
     );
   }
 
+  const alertsAriaLabel = showAlertsBadge ? `${item.label}, ${unreadAlertsCount} unread` : item.label;
+
   return (
     <Link
       href={item.href}
-      aria-label={item.label}
+      aria-label={alertsAriaLabel}
       aria-current={active ? "page" : undefined}
       className={cn(
         "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium outline-none transition-all focus-visible:ring-2 focus-visible:ring-accent/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
@@ -240,14 +252,33 @@ function SidebarItem({ item, pathname }: { item: NavItem; pathname: string }) {
           : "text-muted hover:bg-foreground/5 hover:text-foreground"
       )}
     >
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center">{item.icon(active)}</span>
+      <span className="relative flex h-6 w-6 shrink-0 items-center justify-center">
+        {item.icon(active)}
+        {showAlertsBadge ? (
+          <span
+            className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-0.5 text-[10px] font-bold leading-none text-accent-foreground ring-2 ring-card"
+            aria-hidden
+          >
+            {unreadAlertsCount > 9 ? "9+" : unreadAlertsCount}
+          </span>
+        ) : null}
+      </span>
       <span className="hidden xl:block">{item.label}</span>
     </Link>
   );
 }
 
-function BottomNavItem({ item, pathname }: { item: NavItem; pathname: string }) {
+function BottomNavItem({
+  item,
+  pathname,
+  unreadAlertsCount = 0,
+}: {
+  item: NavItem;
+  pathname: string;
+  unreadAlertsCount?: number;
+}) {
   const active = isActive(item, pathname);
+  const showAlertsBadge = item.href === "/notifications" && unreadAlertsCount > 0;
 
   if (item.isCreate) {
     return (
@@ -263,10 +294,12 @@ function BottomNavItem({ item, pathname }: { item: NavItem; pathname: string }) 
     );
   }
 
+  const alertsAriaLabel = showAlertsBadge ? `${item.label}, ${unreadAlertsCount} unread` : item.label;
+
   return (
     <Link
       href={item.href}
-      aria-label={item.label}
+      aria-label={alertsAriaLabel}
       aria-current={active ? "page" : undefined}
       className={cn(
         "relative flex flex-1 flex-col items-center justify-center gap-0.5 pb-1 transition-colors",
@@ -274,7 +307,17 @@ function BottomNavItem({ item, pathname }: { item: NavItem; pathname: string }) 
       )}
     >
       <span className="relative flex flex-col items-center">
-        {item.icon(active)}
+        <span className="relative inline-flex">
+          {item.icon(active)}
+          {showAlertsBadge ? (
+            <span
+              className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-accent px-0.5 text-[9px] font-bold leading-none text-accent-foreground ring-2 ring-card"
+              aria-hidden
+            >
+              {unreadAlertsCount > 9 ? "9+" : unreadAlertsCount}
+            </span>
+          ) : null}
+        </span>
         {active && (
           <span
             className="absolute -bottom-1.5 h-0.5 w-5 rounded-full bg-accent shadow-[0_0_10px_var(--city-glow)]"
@@ -291,6 +334,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const hideChrome = useHideChrome();
   const profileHref = useProfileHref();
+  const unreadAlertsCount = useUnreadNotificationsCount();
   const navItems = buildNavItems(profileHref);
 
   return (
@@ -312,7 +356,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <nav className="flex flex-1 flex-col gap-1" aria-label="Main navigation">
             {navItems.map((item) => (
-              <SidebarItem key={item.label} item={item} pathname={pathname} />
+              <SidebarItem
+                key={item.label}
+                item={item}
+                pathname={pathname}
+                unreadAlertsCount={item.href === "/notifications" ? unreadAlertsCount : 0}
+              />
             ))}
           </nav>
 
@@ -368,7 +417,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <div className="mx-auto flex w-full max-w-lg items-center px-2 pt-1">
             {navItems.map((item) => (
-              <BottomNavItem key={item.label} item={item} pathname={pathname} />
+              <BottomNavItem
+                key={item.label}
+                item={item}
+                pathname={pathname}
+                unreadAlertsCount={item.href === "/notifications" ? unreadAlertsCount : 0}
+              />
             ))}
           </div>
         </nav>

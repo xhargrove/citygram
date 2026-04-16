@@ -61,17 +61,17 @@ export async function fetchCityFeed(
   if (!isUuid(cityId) || !isUuid(viewerId)) {
     const err = new Error("fetchCityFeed: invalid cityId or viewerId");
     logServerError("fetchCityFeed.invalid_input", { cityId, viewerId, limit, offset }, err);
-    throw err;
+    return [];
   }
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_FEED_PAGE_SIZE) {
     const err = new Error("fetchCityFeed: invalid limit");
     logServerError("fetchCityFeed.invalid_limit", { cityId, viewerId, limit, offset }, err);
-    throw err;
+    return [];
   }
   if (!Number.isInteger(offset) || offset < 0) {
     const err = new Error("fetchCityFeed: invalid offset");
     logServerError("fetchCityFeed.invalid_offset", { cityId, viewerId, limit, offset }, err);
-    throw err;
+    return [];
   }
 
   const { data: posts, error } = await supabase
@@ -84,7 +84,7 @@ export async function fetchCityFeed(
 
   if (error) {
     logServerError("fetchCityFeed.posts_query_failed", { cityId, viewerId, limit, offset }, error);
-    throw new Error(`fetchCityFeed: ${error.message}`);
+    return [];
   }
   if (!posts?.length) {
     return [];
@@ -104,7 +104,7 @@ export async function fetchCityFeed(
     taggedByPost,
   ] = await Promise.all([
     supabase.from("profiles").select("id, username, display_name, avatar_url").in("id", authorIds),
-    supabase.from("cities").select("id, slug, name, region").eq("id", cityId).single(),
+    supabase.from("cities").select("id, slug, name, region").eq("id", cityId).maybeSingle(),
     supabase.from("post_media").select("*").in("post_id", postIds),
     supabase.from("likes").select("post_id").eq("profile_id", viewerId).in("post_id", postIds),
     supabase.from("saved_posts").select("post_id").eq("profile_id", viewerId).in("post_id", postIds),
@@ -167,14 +167,14 @@ export async function fetchPostById(
   if (!isUuid(viewerId)) {
     const err = new Error("fetchPostById: invalid viewerId");
     logServerError("fetchPostById.invalid_input", { postId, viewerId }, err);
-    throw err;
+    return null;
   }
 
   const { data: row, error: postErr } = await supabase.from("posts").select("*").eq("id", postId).maybeSingle();
 
   if (postErr) {
     logServerError("fetchPostById.post_query_failed", { postId, viewerId }, postErr);
-    throw new Error(`fetchPostById: ${postErr.message}`);
+    return null;
   }
   if (!row || row.is_removed) {
     return null;
@@ -193,7 +193,7 @@ export async function fetchPostById(
       .select("id, username, display_name, avatar_url")
       .eq("id", row.author_id)
       .maybeSingle(),
-    supabase.from("cities").select("id, slug, name, region").eq("id", row.city_id).single(),
+    supabase.from("cities").select("id, slug, name, region").eq("id", row.city_id).maybeSingle(),
     supabase.from("post_media").select("*").eq("post_id", postId).order("sort_order"),
     supabase.from("likes").select("post_id").eq("post_id", postId).eq("profile_id", viewerId).maybeSingle(),
     supabase.from("saved_posts").select("post_id").eq("post_id", postId).eq("profile_id", viewerId).maybeSingle(),
@@ -207,27 +207,27 @@ export async function fetchPostById(
 
   if (authorErr) {
     logServerError("fetchPostById.author_query_failed", { postId, viewerId, authorId: row.author_id }, authorErr);
-    throw new Error(`fetchPostById: ${authorErr.message}`);
+    return null;
   }
   if (cityErr) {
     logServerError("fetchPostById.city_query_failed", { postId, viewerId, cityId: row.city_id }, cityErr);
-    throw new Error(`fetchPostById: ${cityErr.message}`);
+    return null;
   }
   if (mediaErr) {
     logServerError("fetchPostById.media_query_failed", { postId, viewerId }, mediaErr);
-    throw new Error(`fetchPostById: ${mediaErr.message}`);
+    return null;
   }
   if (likeErr) {
     logServerError("fetchPostById.like_query_failed", { postId, viewerId }, likeErr);
-    throw new Error(`fetchPostById: ${likeErr.message}`);
+    return null;
   }
   if (saveErr) {
     logServerError("fetchPostById.save_query_failed", { postId, viewerId }, saveErr);
-    throw new Error(`fetchPostById: ${saveErr.message}`);
+    return null;
   }
   if (hoodErr) {
     logServerError("fetchPostById.neighborhood_query_failed", { postId, viewerId, neighborhoodId: row.neighborhood_id }, hoodErr);
-    throw new Error(`fetchPostById: ${hoodErr.message}`);
+    return null;
   }
 
   if (!author || !city) return null;

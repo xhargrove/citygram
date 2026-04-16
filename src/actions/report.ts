@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function reportPost(postId: string, reason: string) {
   const supabase = await createClient();
+  if (!supabase) return { error: "Unavailable" };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -25,6 +27,8 @@ export async function reportPost(postId: string, reason: string) {
 
 export async function moderateRemovePost(postId: string) {
   const supabase = await createClient();
+  if (!supabase) return { error: "Unavailable" };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

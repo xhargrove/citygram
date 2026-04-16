@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { createClient } from "@/lib/supabase/server";
 import type { CityRow } from "@/types/database";
 
 export default async function ExploreCitiesPage() {
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

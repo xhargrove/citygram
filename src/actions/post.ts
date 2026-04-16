@@ -39,6 +39,10 @@ async function rollbackCreatedPost(supabase: SupabaseClient, postId: string, sto
  */
 export async function finalizeCreatePost(input: FinalizeCreatePostInput): Promise<CreatePostState> {
   const supabase = await createClient();
+  if (!supabase) {
+    return { error: "Server configuration error. Try again in a moment." };
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

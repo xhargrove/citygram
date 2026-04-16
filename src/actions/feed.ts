@@ -12,10 +12,14 @@ export async function loadMoreHomeFeedPosts(offset: number): Promise<{
   if (!Number.isInteger(offset) || offset < 0) {
     const err = new Error("loadMoreHomeFeedPosts: invalid offset");
     logServerError("loadMoreHomeFeedPosts.invalid_offset", { offset, route: "/feed" }, err);
-    throw err;
+    return { posts: [], done: true };
   }
 
   const supabase = await createClient();
+  if (!supabase) {
+    return { posts: [], done: true };
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -33,23 +37,13 @@ export async function loadMoreHomeFeedPosts(offset: number): Promise<{
     return { posts: [], done: true };
   }
 
-  let posts: PostWithAuthor[];
-  try {
-    posts = await fetchCityFeed(
-      supabase,
-      profile.home_city_id,
-      user.id,
-      CITY_FEED_PAGE_SIZE,
-      offset
-    );
-  } catch (error) {
-    logServerError(
-      "loadMoreHomeFeedPosts.fetch_failed",
-      { offset, route: "/feed", userId: user.id, cityId: profile.home_city_id },
-      error
-    );
-    throw error;
-  }
+  const posts = await fetchCityFeed(
+    supabase,
+    profile.home_city_id,
+    user.id,
+    CITY_FEED_PAGE_SIZE,
+    offset
+  );
 
   return {
     posts,

@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { createClient } from "@/lib/supabase/server";
 import type { CityRow } from "@/types/database";
 
 export default async function PassportHubPage() {
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const { data: cities } = await supabase.from("cities").select("*").order("name");
   const list = (cities ?? []) as CityRow[];
 

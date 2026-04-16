@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = { searchParams: Promise<{ q?: string }> };
@@ -8,6 +9,8 @@ export default async function SearchPage({ searchParams }: Props) {
   const query = (q ?? "").trim();
 
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

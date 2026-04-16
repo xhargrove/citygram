@@ -53,6 +53,9 @@ export function parseMentionUsernames(text: string): string[] {
   return out;
 }
 
+/** Fixed locale so server-rendered HTML matches the browser (avoids hydration mismatches). */
+const DISPLAY_LOCALE = "en-US";
+
 /** Short relative label for feed timestamps (e.g. "3h", "Jan 4"). */
 export function formatRelativeTime(iso: string): string {
   const t = new Date(iso).getTime();
@@ -65,14 +68,14 @@ export function formatRelativeTime(iso: string): string {
   if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString(DISPLAY_LOCALE, { month: "short", day: "numeric" });
 }
 
-/** Full local date/time for tooltips and screen-reader context. */
+/** Full date/time for tooltips (same locale as SSR/client hydration). */
 export function formatFullTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(DISPLAY_LOCALE, {
     dateStyle: "medium",
     timeStyle: "short",
   });

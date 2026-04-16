@@ -5,15 +5,20 @@ import { FeedActivityStrip } from "@/components/feed/feed-activity-strip";
 import { HomeFeedList } from "@/components/feed/home-feed-list";
 import { RecentVoices } from "@/components/feed/recent-voices";
 import {
+  EMPTY_CITY_PULSE_STATS,
   fetchCityPulseStats,
   fetchElsewhereActivity,
   fetchRecentVoicesInCity,
 } from "@/lib/data/feed-activity";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
 import { fetchCityFeed } from "@/lib/data/posts";
+import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function HomeCityFeedPage() {
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -37,7 +42,7 @@ export default async function HomeCityFeedPage() {
     .from("cities")
     .select("id, name, slug, tagline")
     .eq("id", profile.home_city_id)
-    .single();
+    .maybeSingle();
 
   if (!city) {
     return (
@@ -47,12 +52,47 @@ export default async function HomeCityFeedPage() {
     );
   }
 
-  const [posts, pulse, recentVoices, elsewhere] = await Promise.all([
+  const settled = await Promise.allSettled([
     fetchCityFeed(supabase, profile.home_city_id, user.id),
     fetchCityPulseStats(supabase, profile.home_city_id),
     fetchRecentVoicesInCity(supabase, profile.home_city_id),
     fetchElsewhereActivity(supabase, profile.home_city_id),
   ]);
+
+  const posts = settled[0].status === "fulfilled" ? settled[0].value : [];
+  if (settled[0].status === "rejected") {
+    logServerError(
+      "feed.fetchCityFeed",
+      { cityId: profile.home_city_id, userId: user.id },
+      settled[0].reason
+    );
+  }
+
+  const pulse =
+    settled[1].status === "fulfilled" ? settled[1].value : EMPTY_CITY_PULSE_STATS;
+  if (settled[1].status === "rejected") {
+    logServerError("feed.fetchCityPulseStats", { cityId: profile.home_city_id }, settled[1].reason);
+  }
+
+  const recentVoices = settled[2].status === "fulfilled" ? settled[2].value : [];
+  if (settled[2].status === "rejected") {
+    logServerError(
+      "feed.fetchRecentVoicesInCity",
+      { cityId: profile.home_city_id },
+      settled[2].reason
+    );
+  }
+
+  const elsewhere = settled[3].status === "fulfilled" ? settled[3].value : [];
+  if (settled[3].status === "rejected") {
+    logServerError("feed.fetchElsewhereActivity", { cityId: profile.home_city_id }, settled[3].reason);
+  }
+
+  const feedPartialFailure =
+    settled[0].status === "rejected" ||
+    settled[1].status === "rejected" ||
+    settled[2].status === "rejected" ||
+    settled[3].status === "rejected";
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg pb-4">
@@ -89,6 +129,13 @@ export default async function HomeCityFeedPage() {
           first, not a generic timeline.
         </p>
       </header>
+
+      {feedPartialFailure ? (
+        <p className="mx-4 mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-950 dark:text-amber-100">
+          Some feed data didn&apos;t load. Refresh the page or try again in a moment — your connection or the service may
+          have hiccuped.
+        </p>
+      ) : null}
 
       <section className="space-y-4 px-4 pt-4">
         <FeedActivityStrip
@@ -144,3 +191,4 @@ export default async function HomeCityFeedPage() {
     </div>
   );
 }
+

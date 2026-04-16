@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 
 type Props = {
   error: Error & { digest?: string };
   reset: () => void;
 };
 
-export default function FeedError({ reset }: Props) {
+export default function FeedError({ error, reset }: Props) {
+  useEffect(() => {
+    // Helps match production "digest" errors to Vercel / server logs.
+    console.error("[Citygram feed error]", error?.message, error?.digest ?? "");
+  }, [error]);
   return (
     <div className="mx-auto min-h-dvh max-w-lg px-4 py-14">
       <div className="rounded-2xl border border-border/60 bg-card/60 px-5 py-8 text-center shadow-sm">

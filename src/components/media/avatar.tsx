@@ -14,14 +14,18 @@ export function Avatar({ src, alt, size = "md", className }: AvatarProps) {
   const dim = sizes[size];
   if (src) {
     return (
-      <Image
-        src={src}
-        alt={alt}
-        width={dim}
-        height={dim}
-        className={cn("rounded-full object-cover ring-2 ring-border", className)}
-        sizes={`${dim}px`}
-      />
+      <div
+        className={cn("relative shrink-0 overflow-hidden rounded-full ring-2 ring-border", className)}
+        style={{ width: dim, height: dim }}
+      >
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          className="object-cover"
+          sizes={`${dim}px`}
+        />
+      </div>
     );
   }
   return (

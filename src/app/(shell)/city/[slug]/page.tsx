@@ -9,6 +9,8 @@ import {
   fetchTrendingCreators,
   fetchTrendingPosts,
 } from "@/lib/data/city-page";
+import { SupabaseConfigMissing } from "@/components/server/supabase-config-missing";
+import { logServerError } from "@/lib/server-log";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -16,6 +18,8 @@ type Props = { params: Promise<{ slug: string }> };
 export default async function CityPulsePage({ params }: Props) {
   const { slug } = await params;
   const supabase = await createClient();
+  if (!supabase) return <SupabaseConfigMissing />;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -31,17 +35,37 @@ export default async function CityPulsePage({ params }: Props) {
     .maybeSingle();
 
   const { data: homeCityMeta } = profile?.home_city_id
-    ? await supabase.from("cities").select("name").eq("id", profile.home_city_id).single()
+    ? await supabase.from("cities").select("name").eq("id", profile.home_city_id).maybeSingle()
     : { data: null };
 
   const isHomeCity = Boolean(profile?.home_city_id && profile.home_city_id === city.id);
 
-  const [trendingPosts, creators, businesses, events] = await Promise.all([
+  const settled = await Promise.allSettled([
     fetchTrendingPosts(supabase, city.id, user.id, 6),
     fetchTrendingCreators(supabase, city.id, 6),
     fetchLocalBusinesses(supabase, city.id, 6),
     fetchCityEvents(supabase, city.id, 6),
   ]);
+
+  const trendingPosts = settled[0].status === "fulfilled" ? settled[0].value : [];
+  if (settled[0].status === "rejected") {
+    logServerError("cityPage.fetchTrendingPosts", { slug, cityId: city.id }, settled[0].reason);
+  }
+
+  const creators = settled[1].status === "fulfilled" ? settled[1].value : [];
+  if (settled[1].status === "rejected") {
+    logServerError("cityPage.fetchTrendingCreators", { slug, cityId: city.id }, settled[1].reason);
+  }
+
+  const businesses = settled[2].status === "fulfilled" ? settled[2].value : [];
+  if (settled[2].status === "rejected") {
+    logServerError("cityPage.fetchLocalBusinesses", { slug, cityId: city.id }, settled[2].reason);
+  }
+
+  const events = settled[3].status === "fulfilled" ? settled[3].value : [];
+  if (settled[3].status === "rejected") {
+    logServerError("cityPage.fetchCityEvents", { slug, cityId: city.id }, settled[3].reason);
+  }
 
   return (
     <div className="mx-auto min-h-dvh max-w-lg pb-24">

@@ -62,5 +62,10 @@ export async function fetchTrendingPosts(
   limit = 8
 ): Promise<PostWithAuthor[]> {
   const feed = await fetchCityFeed(supabase, cityId, viewerId, 60);
-  return [...feed].sort((a, b) => b.like_count - a.like_count).slice(0, limit);
+  return [...feed]
+    .sort(
+      (a, b) =>
+        Number(b.like_count ?? 0) - Number(a.like_count ?? 0)
+    )
+    .slice(0, limit);
 }

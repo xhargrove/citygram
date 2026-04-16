@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function toggleLike(postId: string) {
   const supabase = await createClient();
+  if (!supabase) return { error: "Unavailable" };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -45,6 +47,8 @@ export async function toggleLike(postId: string) {
 
 export async function toggleSave(postId: string) {
   const supabase = await createClient();
+  if (!supabase) return { error: "Unavailable" };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -75,6 +79,8 @@ export async function addComment(postId: string, body: string) {
     return { error: "Invalid comment" };
   }
   const supabase = await createClient();
+  if (!supabase) return { error: "Unavailable" };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -108,6 +114,8 @@ export async function addComment(postId: string, body: string) {
 
 export async function toggleFollow(targetUsername: string) {
   const supabase = await createClient();
+  if (!supabase) return { error: "Unavailable" };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -129,6 +137,13 @@ export async function toggleFollow(targetUsername: string) {
 
   if (existing) {
     await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", target.id);
+    await supabase
+      .from("notifications")
+      .delete()
+      .eq("recipient_id", target.id)
+      .eq("actor_id", user.id)
+      .eq("type", "follow")
+      .is("post_id", null);
   } else {
     await supabase.from("follows").insert({
       follower_id: user.id,
@@ -143,11 +158,14 @@ export async function toggleFollow(targetUsername: string) {
   }
 
   revalidatePath(`/u/${targetUsername}`);
+  revalidatePath("/notifications");
   return { ok: true };
 }
 
 export async function recordShare(postId: string) {
   const supabase = await createClient();
+  if (!supabase) return { error: "Unavailable" };
+
   const { error } = await supabase.rpc("increment_post_share", { p_post_id: postId });
   if (error) return { error: error.message };
   revalidatePath(`/post/${postId}`);
