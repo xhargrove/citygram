@@ -11,7 +11,8 @@ import { logServerError } from "@/lib/server-log";
 
 /** Default page size for city-scoped feeds (home, passport, etc.). */
 export const CITY_FEED_PAGE_SIZE = 20;
-const MAX_FEED_PAGE_SIZE = 50;
+/** Upper bound for `limit` in `fetchCityFeed` (Supabase range size). */
+export const MAX_FEED_PAGE_SIZE = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isUuid(v: string): boolean {

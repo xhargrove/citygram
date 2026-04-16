@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PostWithAuthor } from "@/types/database";
-import { fetchCityFeed } from "@/lib/data/posts";
+import { fetchCityFeed, MAX_FEED_PAGE_SIZE } from "@/lib/data/posts";
 
 export async function fetchCityBySlug(supabase: SupabaseClient, slug: string) {
   const { data } = await supabase.from("cities").select("*").eq("slug", slug).maybeSingle();
@@ -61,7 +61,7 @@ export async function fetchTrendingPosts(
   viewerId: string,
   limit = 8
 ): Promise<PostWithAuthor[]> {
-  const feed = await fetchCityFeed(supabase, cityId, viewerId, 60);
+  const feed = await fetchCityFeed(supabase, cityId, viewerId, MAX_FEED_PAGE_SIZE);
   return [...feed]
     .sort(
       (a, b) =>
